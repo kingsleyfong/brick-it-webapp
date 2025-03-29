@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useImageContext } from '../context/ImageContext';
+import { generateImageFromPrompt, checkOnnxAvailability } from '../utils/imageGeneration';
 
 const MosaicStart = () => {
   const navigate = useNavigate();
@@ -17,10 +18,16 @@ const MosaicStart = () => {
   useEffect(() => {
     const loadDefaultImage = async () => {
       try {
-        // In a real implementation, you would load the actual pikachu.png file
-        // For now, we'll just set a placeholder URL
+        // Load the pikachu.png from the public folder
         const defaultImagePath = '/pikachu.png';
-        setUsingDefaultImage(true);
+        const response = await fetch(defaultImagePath);
+        
+        if (response.ok) {
+          setUsingDefaultImage(true);
+          console.log('Default image loaded successfully');
+        } else {
+          console.error('Failed to load default image:', response.statusText);
+        }
       } catch (error) {
         console.error('Error loading default image:', error);
       }
@@ -59,18 +66,22 @@ const MosaicStart = () => {
     setIsGenerating(true);
     
     try {
-      // In the real implementation, this is where we would call
-      // the ONNX model to generate an image from the prompt
-      // For now, we'll just simulate it with a timeout
+      // Check if ONNX would be available
+      const isOnnxAvailable = checkOnnxAvailability();
       
-      setTimeout(() => {
-        // This would be replaced with actual image generation
-        // For now, we'll use a placeholder
-        const placeholderImageURL = 'https://via.placeholder.com/512';
-        setOriginalImage(placeholderImageURL);
+      if (!isOnnxAvailable) {
+        setError('Your browser may not support AI image generation. Please try on a desktop Chrome browser.');
         setIsGenerating(false);
-        navigate('/crop');
-      }, 2000);
+        return;
+      }
+      
+      // Generate image using our utility
+      const generatedImageUrl = await generateImageFromPrompt(aiPrompt);
+      
+      // Set the generated image and navigate to crop page
+      setOriginalImage(generatedImageUrl);
+      setIsGenerating(false);
+      navigate('/crop');
     } catch (error) {
       setError('Error generating image: ' + error.message);
       setIsGenerating(false);
@@ -79,10 +90,9 @@ const MosaicStart = () => {
 
   // Handle use of default image
   const handleUseDefaultImage = () => {
-    // In real implementation, you would use the actual loaded default image
-    // For now, we'll use a placeholder
-    const placeholderImageURL = 'https://via.placeholder.com/512';
-    setOriginalImage(placeholderImageURL);
+    // Load the pikachu.png from the public folder
+    const defaultImagePath = '/pikachu.png';
+    setOriginalImage(defaultImagePath);
     navigate('/crop');
   };
 

@@ -3,6 +3,7 @@ import { useImageContext } from '../context/ImageContext';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { voxelizeMesh, generateTxtFileContent } from '../utils/voxelization';
 
 const ThreeDHome = () => {
   const { modelFile, setModelFile, colorConfig, modelColor, setModelColor, supportColor, setSupportColor } = useImageContext();
@@ -19,6 +20,7 @@ const ThreeDHome = () => {
   const [exportSuccess, setExportSuccess] = useState(false);
   const [voxelData, setVoxelData] = useState(null);
   const [scale, setScale] = useState(1.0);
+  const [defaultModelAvailable, setDefaultModelAvailable] = useState(false);
   
   // Three.js references
   const mountRef = useRef(null);
@@ -106,12 +108,18 @@ const ThreeDHome = () => {
   useEffect(() => {
     const loadDefaultModel = async () => {
       try {
-        // In a real implementation, you would load the actual gengar.stl file
-        // For now, we'll just simulate it
-        // In the future, you should place the gengar.stl file in the public folder
-        console.log('Default model would be loaded here');
+        // Check if the gengar.stl file exists
+        const defaultModelPath = '/gengar.stl';
+        const response = await fetch(defaultModelPath);
+        
+        if (response.ok) {
+          setDefaultModelAvailable(true);
+          console.log('Default model available');
+        } else {
+          console.error('Default model not available:', response.statusText);
+        }
       } catch (error) {
-        console.error('Error loading default model:', error);
+        console.error('Error checking default model:', error);
       }
     };
     
@@ -141,6 +149,31 @@ const ThreeDHome = () => {
       setError('Error reading file');
     };
     reader.readAsArrayBuffer(file);
+  };
+  
+  // Handle default model load
+  const handleDefaultModel = async () => {
+    try {
+      setIsProcessing(true);
+      setProgress(10);
+      
+      const defaultModelPath = '/gengar.stl';
+      const response = await fetch(defaultModelPath);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load default model: ${response.statusText}`);
+      }
+      
+      setProgress(30);
+      
+      const arrayBuffer = await response.arrayBuffer();
+      setModelFile(arrayBuffer);
+      processSTLFile(arrayBuffer);
+    } catch (error) {
+      console.error('Error loading default model:', error);
+      setError(`Error loading default model: ${error.message}`);
+      setIsProcessing(false);
+    }
   };
   
   // Process STL file
@@ -202,8 +235,13 @@ const ThreeDHome = () => {
       
       setProgress(70);
       
-      // Voxelize the model (simplified version for now)
-      voxelizeModel(mesh);
+      // Voxelize the model using our utility
+      const voxelResult = voxelizeMesh(mesh);
+      setVoxelData(voxelResult);
+      setModelStats(voxelResult.stats);
+      
+      // Visualize voxels
+      visualizeVoxels(voxelResult.voxels, voxelResult.supportVoxels);
       
       setProgress(100);
       setIsProcessing(false);
@@ -211,102 +249,6 @@ const ThreeDHome = () => {
       console.error('Error processing STL file:', error);
       setError('Error processing STL file: ' + error.message);
       setIsProcessing(false);
-    }
-  };
-  
-  // Simplified voxelization (in a real implementation, this would be more complex)
-  const voxelizeModel = (mesh) => {
-    try {
-      // Get bounding box
-      const box = new THREE.Box3().setFromObject(mesh);
-      
-      // Define grid size
-      const gridSize = 16;
-      
-      // Create a simple 3D grid
-      const voxels = Array(gridSize).fill().map(() => 
-        Array(gridSize).fill().map(() => 
-          Array(10).fill(false)
-        )
-      );
-      
-      // Mark voxels as filled (very simplified version)
-      // This is a placeholder - in a real application, you would use
-      // proper voxelization algorithms to determine which voxels are filled
-      
-      // For now, we'll just fill a simple shape
-      for (let x = 4; x < 12; x++) {
-        for (let y = 4; y < 12; y++) {
-          for (let z = 0; z < 6; z++) {
-            // Skip some voxels to create a more interesting shape
-            if (x === 4 || x === 11 || y === 4 || y === 11 || z === 0) {
-              voxels[x][y][z] = true;
-            }
-          }
-        }
-      }
-      
-      // Create support voxels (simplified)
-      const supportVoxels = Array(gridSize).fill().map(() => 
-        Array(gridSize).fill().map(() => 
-          Array(10).fill(false)
-        )
-      );
-      
-      // Add support under model voxels
-      for (let x = 0; x < gridSize; x++) {
-        for (let y = 0; y < gridSize; y++) {
-          let foundModelVoxel = false;
-          let supportHeight = 0;
-          
-          // Scan from bottom to top
-          for (let z = 0; z < 10; z++) {
-            if (voxels[x][y][z]) {
-              foundModelVoxel = true;
-              break;
-            }
-            supportHeight = z;
-          }
-          
-          // If we found a model voxel, add support voxels below it
-          if (foundModelVoxel) {
-            for (let z = 0; z <= supportHeight; z++) {
-              supportVoxels[x][y][z] = true;
-            }
-          }
-        }
-      }
-      
-      // Store voxel data
-      setVoxelData({ voxels, supportVoxels });
-      
-      // Count model and support bricks
-      let modelCount = 0;
-      let supportCount = 0;
-      
-      for (let x = 0; x < gridSize; x++) {
-        for (let y = 0; y < gridSize; y++) {
-          for (let z = 0; z < 10; z++) {
-            if (voxels[x][y][z]) {
-              modelCount++;
-            }
-            if (supportVoxels[x][y][z] && !voxels[x][y][z]) {
-              supportCount++;
-            }
-          }
-        }
-      }
-      
-      setModelStats({
-        totalBricks: modelCount + supportCount,
-        modelBricks: modelCount,
-        supportBricks: supportCount
-      });
-      
-      // Visualize voxels
-      visualizeVoxels(voxels, supportVoxels);
-    } catch (error) {
-      console.error('Error voxelizing model:', error);
     }
   };
   
@@ -410,38 +352,14 @@ const ThreeDHome = () => {
     }
     
     try {
-      const { voxels, supportVoxels } = voxelData;
-      let txtContent = '';
-      
-      // Process model voxels
-      for (let x = 0; x < voxels.length; x++) {
-        for (let y = 0; y < voxels[x].length; y++) {
-          for (let z = 0; z < voxels[x][y].length; z++) {
-            if (voxels[x][y][z]) {
-              // Get model color dispenser
-              const colorDispenser = colorConfig[modelColor]?.dispenser || 1;
-              
-              // Add to TXT content (x, y, z, color_index)
-              txtContent += `${x + 1} ${y + 1} ${z + 1} ${colorDispenser}\n`;
-            }
-          }
-        }
-      }
-      
-      // Process support voxels
-      for (let x = 0; x < supportVoxels.length; x++) {
-        for (let y = 0; y < supportVoxels[x].length; y++) {
-          for (let z = 0; z < supportVoxels[x][y].length; z++) {
-            if (supportVoxels[x][y][z] && !voxels[x][y][z]) {
-              // Get support color dispenser
-              const colorDispenser = colorConfig[supportColor]?.dispenser || 7;
-              
-              // Add to TXT content (x, y, z, color_index)
-              txtContent += `${x + 1} ${y + 1} ${z + 1} ${colorDispenser}\n`;
-            }
-          }
-        }
-      }
+      // Generate TXT content using our utility
+      const txtContent = generateTxtFileContent(
+        voxelData.voxels,
+        voxelData.supportVoxels,
+        colorConfig,
+        modelColor,
+        supportColor
+      );
       
       // Create a download link
       const blob = new Blob([txtContent], { type: 'text/plain' });
@@ -498,6 +416,18 @@ const ThreeDHome = () => {
                 Select an .stl file to convert to LEGO bricks
               </p>
             </div>
+            
+            {/* Default Model Button */}
+            {defaultModelAvailable && (
+              <div className="mb-4">
+                <button
+                  className="w-full py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700"
+                  onClick={handleDefaultModel}
+                >
+                  Use Default Model (Gengar)
+                </button>
+              </div>
+            )}
             
             {/* Scale Controls */}
             <div className="mb-4">
