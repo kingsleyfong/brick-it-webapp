@@ -1,11 +1,30 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function MosaicHome() {
   const [imageFile, setImageFile] = useState(null);
   const [prompt, setPrompt] = useState('');
+  const navigate = useNavigate();
 
   const handleImageChange = (e) => {
     setImageFile(e.target.files[0]);
+  };
+
+  const handleContinueToCrop = () => {
+    if (!imageFile) {
+      alert('Please upload an image before continuing.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      navigate('/crop', {
+        state: {
+          imageSrc: reader.result,
+        },
+      });
+    };
+    reader.readAsDataURL(imageFile);
   };
 
   return (
@@ -27,7 +46,10 @@ export default function MosaicHome() {
         className="border p-2 w-full max-w-md"
       />
 
-      <button className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded">
+      <button
+        className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded"
+        onClick={handleContinueToCrop}
+      >
         Continue to Crop
       </button>
 
