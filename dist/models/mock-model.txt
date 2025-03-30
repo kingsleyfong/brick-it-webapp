@@ -1,0 +1,3 @@
+This is a placeholder for the tiny-stable-diffusion.onnx file.
+The actual ONNX model file would be too large to include in the repo.
+The application will fall back to using the mock implementation when this file is not present. 

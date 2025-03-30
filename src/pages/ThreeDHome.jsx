@@ -102,8 +102,8 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    originalCamera.position.set(10, 10, 10);
-    originalCamera.lookAt(0, 0, 0);
+    originalCamera.position.set(12, 10, 12);
+    originalCamera.lookAt(0, 2, 0);
     
     const voxelCamera = new THREE.PerspectiveCamera(
       75,
@@ -111,8 +111,8 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    voxelCamera.position.set(10, 10, 10);
-    voxelCamera.lookAt(0, 0, 0);
+    voxelCamera.position.set(12, 10, 12);
+    voxelCamera.lookAt(0, 2, 0);
     
     const legoCamera = new THREE.PerspectiveCamera(
       75,
@@ -120,8 +120,8 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    legoCamera.position.set(10, 10, 10);
-    legoCamera.lookAt(0, 0, 0);
+    legoCamera.position.set(12, 10, 12);
+    legoCamera.lookAt(0, 2, 0);
     
     // Create renderers for each viewport
     const originalRenderer = new THREE.WebGLRenderer({ antialias: true });
@@ -395,6 +395,7 @@ const ThreeDHome = () => {
     try {
       setIsProcessing(true);
       setProgress(10);
+      setProcessingMessage("Loading default model...");
       
       const defaultModelPath = '/gengar.stl';
       const response = await fetch(defaultModelPath);
@@ -404,6 +405,7 @@ const ThreeDHome = () => {
       }
       
       setProgress(30);
+      setProcessingMessage("Processing STL data...");
       
       const arrayBuffer = await response.arrayBuffer();
       setModelFile(arrayBuffer);
@@ -415,6 +417,186 @@ const ThreeDHome = () => {
     }
   };
   
+  // Debug helper to visualize bounding boxes and model center points
+  const addDebugVisualization = (model, scene) => {
+    // Create a Box3 from the model
+    const boundingBox = new THREE.Box3().setFromObject(model);
+    
+    // Create a Box3Helper with a distinctive color
+    const boxHelper = new THREE.Box3Helper(boundingBox, 0xff0000);
+    boxHelper.name = 'debugBoxHelper';
+    
+    // Create marker for the ground level
+    const groundMarkerGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundMarkerMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x00ffff, 
+      transparent: true, 
+      opacity: 0.2,
+      side: THREE.DoubleSide
+    });
+    const groundMarker = new THREE.Mesh(groundMarkerGeometry, groundMarkerMaterial);
+    groundMarker.position.set(0, 0, 0);
+    groundMarker.rotation.x = Math.PI / 2;
+    groundMarker.name = 'debugGroundMarker';
+    
+    // Create a sphere for the center point
+    const center = new THREE.Vector3();
+    boundingBox.getCenter(center);
+    const centerMarkerGeometry = new THREE.SphereGeometry(0.2);
+    const centerMarkerMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+    const centerMarker = new THREE.Mesh(centerMarkerGeometry, centerMarkerMaterial);
+    centerMarker.position.copy(center);
+    centerMarker.name = 'debugCenterMarker';
+    
+    // Add all debug helpers
+    scene.add(boxHelper);
+    scene.add(groundMarker);
+    scene.add(centerMarker);
+    
+    // Log bounding box info to console
+    console.log('Debug - Model Bounding Box:', {
+      min: boundingBox.min,
+      max: boundingBox.max,
+      center,
+      size: new THREE.Vector3().subVectors(boundingBox.max, boundingBox.min)
+    });
+  };
+
+  // Helper to orient the model correctly (make it stand upright)
+  const orientModelUpright = (mesh) => {
+    console.log("Starting model orientation process");
+    
+    // Get the current bounding box before any rotations
+    const bbox = new THREE.Box3().setFromObject(mesh);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+    
+    console.log("Original dimensions:", size);
+    
+    // Get the center for tracking position changes
+    const center = new THREE.Vector3();
+    bbox.getCenter(center);
+    
+    // Determine which dimension is the largest (should be the height in Y-axis)
+    const dimensions = [
+      { axis: 'x', value: size.x },
+      { axis: 'y', value: size.y },
+      { axis: 'z', value: size.z }
+    ];
+    
+    // Sort dimensions to find the largest one (descending order)
+    dimensions.sort((a, b) => b.value - a.value);
+    
+    console.log("Largest dimension is", dimensions[0].axis, "with size", dimensions[0].value);
+    console.log("Second largest is", dimensions[1].axis, "with size", dimensions[1].value);
+    
+    // First, reset the mesh to origin with no rotation
+    mesh.position.set(0, 0, 0);
+    mesh.rotation.set(0, 0, 0);
+    mesh.updateMatrix();
+    mesh.geometry.applyMatrix4(mesh.matrix);
+    mesh.matrix.identity();
+    
+    // If the model's largest dimension is not already the Y axis, rotate it
+    if (dimensions[0].axis !== 'y') {
+      console.log(`Orienting model: Largest dimension is ${dimensions[0].axis}, rotating to Y-up`);
+      
+      // Create a new rotation matrix
+      let rotationMatrix = new THREE.Matrix4();
+      
+      // Determine rotation based on which axis is the largest
+      if (dimensions[0].axis === 'x') {
+        // X is longest, rotate 90 degrees around Z to make X align with Y
+        console.log("Rotating 90 degrees around Z axis");
+        rotationMatrix.makeRotationZ(-Math.PI / 2);
+      } else if (dimensions[0].axis === 'z') {
+        // Z is longest, rotate 90 degrees around X to make Z align with Y
+        console.log("Rotating 90 degrees around X axis");
+        rotationMatrix.makeRotationX(Math.PI / 2);
+      }
+      
+      // Apply the rotation directly to the geometry
+      mesh.geometry.applyMatrix4(rotationMatrix);
+      
+      // Reset position and rotation
+      mesh.position.set(0, 0, 0);
+      mesh.rotation.set(0, 0, 0);
+      mesh.updateMatrix();
+      
+      // Recompute the bounding box after rotation
+      const newBbox = new THREE.Box3().setFromObject(mesh);
+      const newSize = new THREE.Vector3();
+      newBbox.getSize(newSize);
+      console.log("Dimensions after first rotation:", newSize);
+      
+      // Get updated size dimensions
+      const newDimensions = [
+        { axis: 'x', value: newSize.x },
+        { axis: 'y', value: newSize.y },
+        { axis: 'z', value: newSize.z }
+      ];
+      newDimensions.sort((a, b) => b.value - a.value);
+      
+      // If Y is still not the largest dimension, apply a second rotation
+      if (newDimensions[0].axis !== 'y') {
+        console.warn("First rotation didn't make Y the largest dimension. Applying second rotation.");
+        
+        // Try a different rotation approach
+        const correctionMatrix = new THREE.Matrix4();
+        
+        if (newDimensions[0].axis === 'x') {
+          console.log("Second rotation: Rotating 90 degrees around Z axis");
+          correctionMatrix.makeRotationZ(-Math.PI / 2);
+        } else if (newDimensions[0].axis === 'z') {
+          console.log("Second rotation: Rotating 90 degrees around X axis");
+          correctionMatrix.makeRotationX(Math.PI / 2);
+        }
+        
+        // Apply the correction
+        mesh.geometry.applyMatrix4(correctionMatrix);
+        mesh.position.set(0, 0, 0);
+        mesh.rotation.set(0, 0, 0);
+        mesh.updateMatrix();
+        
+        // Verify again
+        const correctedBbox = new THREE.Box3().setFromObject(mesh);
+        const correctedSize = new THREE.Vector3();
+        correctedBbox.getSize(correctedSize);
+        console.log("Dimensions after second rotation:", correctedSize);
+      }
+    }
+    
+    // Final forced upright alignment - this ensures the model stands upright
+    // regardless of its initial orientation
+    const finalBbox = new THREE.Box3().setFromObject(mesh);
+    const finalSize = new THREE.Vector3();
+    finalBbox.getSize(finalSize);
+    
+    // If Y is still not the largest dimension, force a rotation around X
+    if (finalSize.y < finalSize.x || finalSize.y < finalSize.z) {
+      console.warn("Model still not properly upright. Forcing alignment.");
+      
+      // Force a 90-degree rotation around X
+      const forceMatrix = new THREE.Matrix4();
+      forceMatrix.makeRotationX(Math.PI / 2);
+      mesh.geometry.applyMatrix4(forceMatrix);
+      
+      mesh.position.set(0, 0, 0);
+      mesh.rotation.set(0, 0, 0);
+      mesh.matrix.identity();
+      
+      // Final verification
+      const forcedBbox = new THREE.Box3().setFromObject(mesh);
+      const forcedSize = new THREE.Vector3();
+      forcedBbox.getSize(forcedSize);
+      console.log("Dimensions after forced correction:", forcedSize);
+    }
+    
+    console.log("Model orientation complete");
+    
+    return mesh;
+  };
+
   // Process STL file
   const processSTLFile = (fileData) => {
     setIsProcessing(true);
@@ -442,29 +624,61 @@ const ThreeDHome = () => {
       // Start processing
       updateProgressWithInfo(0);
       
-      // Clear previous models from all scenes
-      const clearScene = (scene) => {
-        const modelGroup = scene.getObjectByName('modelGroup');
-        if (modelGroup) {
-          scene.remove(modelGroup);
+      // Clear ALL previous content from the scenes
+      const clearAllScenes = () => {
+        [originalSceneRef, voxelSceneRef, legoSceneRef].forEach(sceneRef => {
+          if (!sceneRef.current) return;
+          
+          // Remove all objects except lights
+          const objectsToRemove = [];
+          sceneRef.current.traverse((object) => {
+            // Don't remove lights, we need them
+            if (!(object instanceof THREE.Light) && object !== sceneRef.current) {
+              objectsToRemove.push(object);
+            }
+          });
+          
+          objectsToRemove.forEach(object => {
+            sceneRef.current.remove(object);
+          });
+        });
+      };
+      
+      clearAllScenes();
+      updateProgressWithInfo(1);
+      
+      // Create the grid helpers for all viewports
+      const createGridsAndAxes = () => {
+        // Create a grid helper - make it large enough to be visible
+        const gridHelper = new THREE.GridHelper(16, 16, 0x888888, 0xcccccc);
+        // Position the grid exactly at the origin (Y=0)
+        gridHelper.position.set(0, 0, 0);
+        
+        // Create axes helper
+        const axesHelper = new THREE.AxesHelper(8);
+        
+        // Add to all scenes
+        if (originalSceneRef.current) {
+          originalSceneRef.current.add(gridHelper.clone());
+          originalSceneRef.current.add(axesHelper.clone());
         }
         
-        const voxelGroup = scene.getObjectByName('voxelGroup');
-        if (voxelGroup) {
-          scene.remove(voxelGroup);
+        if (voxelSceneRef.current) {
+          voxelSceneRef.current.add(gridHelper.clone());
+          voxelSceneRef.current.add(axesHelper.clone());
+        }
+        
+        if (legoSceneRef.current) {
+          legoSceneRef.current.add(gridHelper.clone());
+          legoSceneRef.current.add(axesHelper.clone());
         }
       };
       
-      if (originalSceneRef.current) clearScene(originalSceneRef.current);
-      if (voxelSceneRef.current) clearScene(voxelSceneRef.current);
-      if (legoSceneRef.current) clearScene(legoSceneRef.current);
-      
-      updateProgressWithInfo(1);
+      createGridsAndAxes();
       
       // Load STL file
       const loader = new STLLoader();
       const geometry = loader.parse(fileData);
-      
       updateProgressWithInfo(2);
       
       // --- VIEWPORT 1: ORIGINAL STL MODEL ---
@@ -478,48 +692,70 @@ const ThreeDHome = () => {
       
       const originalMesh = new THREE.Mesh(geometry, originalMaterial);
       
-      // Properly center the mesh based on its bounding box
-      geometry.computeBoundingBox();
-      const box = geometry.boundingBox;
-      const center = new THREE.Vector3();
-      box.getCenter(center);
+      // STEP 1: Reset model position and scale to start fresh
+      originalMesh.position.set(0, 0, 0); 
+      originalMesh.scale.set(1, 1, 1);
+      originalMesh.rotation.set(0, 0, 0);
+      originalMesh.updateMatrix();
       
-      // Move the mesh so its center is at the origin
-      originalMesh.position.set(-center.x, -center.y, -center.z);
+      // STEP 2: Orient the model to stand upright (longest dimension along Y-axis)
+      orientModelUpright(originalMesh);
       
-      // Calculate the size of the mesh
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      const maxDimension = Math.max(size.x, size.y, size.z);
+      // STEP 3: Recalculate the bounding box after orientation
+      const orientedBox = new THREE.Box3().setFromObject(originalMesh);
+      const orientedSize = new THREE.Vector3();
+      orientedBox.getSize(orientedSize);
       
-      // Scale mesh to fit in the grid (adjust this value to fit your needs)
-      // Using 8 instead of 12 to leave room for the grid visualization
-      const scaleFactor = 8 / maxDimension;
-      const finalScale = scaleFactor * scale;
-      originalMesh.scale.set(finalScale, finalScale, finalScale);
+      // STEP 4: Determine the scaling factor to fit the model within our grid
+      // We want to leave some margin on all sides of the grid
+      const maxDimension = Math.max(orientedSize.x, orientedSize.z);
+      const targetGridSize = 14; // 14 units out of 16 to leave a margin
+      const scaleFactor = targetGridSize / maxDimension * scale;
       
-      // Create a group for the original model and position it at the center of the grid
+      console.log("Applying scale factor:", scaleFactor);
+      originalMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      
+      // STEP 5: After scaling, recalculate the bounding box and center
+      const scaledBox = new THREE.Box3().setFromObject(originalMesh);
+      const scaledSize = new THREE.Vector3();
+      scaledBox.getSize(scaledSize);
+      console.log("Scaled dimensions:", scaledSize);
+      
+      // STEP 6: CRITICAL - Position the model so its bottom sits exactly on the grid (Y=0)
+      // and it's centered in the XZ plane
+      const offset = new THREE.Vector3();
+      scaledBox.getCenter(offset);
+      
+      originalMesh.position.set(
+        -offset.x,                 // Center on X
+        -scaledBox.min.y,          // Bottom at Y=0
+        -offset.z                  // Center on Z
+      );
+      
+      console.log("Final position:", originalMesh.position);
+      
+      // STEP 7: Create a group for the model and add it to the scene
       const originalModelGroup = new THREE.Group();
       originalModelGroup.name = 'modelGroup';
       originalModelGroup.add(originalMesh);
-      
-      // Position the model at the center of the scene (which should also be the center of the grid)
-      originalModelGroup.position.set(0, 0, 0);
-      
-      // Add to original scene
       originalSceneRef.current.add(originalModelGroup);
       
-      // Create a mesh for voxelization that maintains the same scale and position
-      const voxelizationMesh = originalMesh.clone();
+      // Add debug visualization to see the bounding box
+      addDebugVisualization(originalModelGroup, originalSceneRef.current);
       
       setTimeout(() => {
         updateProgressWithInfo(3);
         
-        // Voxelize the model using our utility
-        // Pass the scale factor to ensure consistent voxelization
-        const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16, finalScale);
+        // Create a mesh for voxelization that maintains the same position and scale
+        const voxelizationMesh = originalMesh.clone();
+        
+        // Voxelize the model using our utility - clone to avoid modifying original
+        const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16, scaleFactor);
         setVoxelData(voxelResult);
         setModelStats(voxelResult.stats);
+        
+        // Set the maximum layer for layer view mode
+        setMaxLayer(voxelResult.voxels.length - 1);
         
         setTimeout(() => {
           updateProgressWithInfo(4);
@@ -527,26 +763,8 @@ const ThreeDHome = () => {
           // Visualize voxels in the other two viewports
           visualizeVoxels(voxelResult.voxels, voxelResult.supportVoxels);
           
-          // Reset camera views for all viewports to show the model properly
-          if (originalControlsRef.current) {
-            // Set camera to a position that shows the model well
-            originalCameraRef.current.position.set(12, 8, 12);
-            originalControlsRef.current.target.set(0, 0, 0);
-            originalControlsRef.current.update();
-          }
-          
-          // Sync the other cameras
-          if (voxelControlsRef.current) {
-            voxelCameraRef.current.position.copy(originalCameraRef.current.position);
-            voxelControlsRef.current.target.copy(originalControlsRef.current.target);
-            voxelControlsRef.current.update();
-          }
-          
-          if (legoControlsRef.current) {
-            legoCameraRef.current.position.copy(originalCameraRef.current.position);
-            legoControlsRef.current.target.copy(originalControlsRef.current.target);
-            legoControlsRef.current.update();
-          }
+          // Set camera positions to ensure the model is visible in all viewports
+          resetView();
           
           updateProgressWithInfo(5);
           
@@ -594,386 +812,336 @@ const ThreeDHome = () => {
 
   // Visualize voxels in the scenes
   const visualizeVoxels = (voxels, supportVoxels) => {
-    try {
-      const { brickGeometry, studGeometry, wireframeGeometry } = createCachedGeometries();
+    // First clear any existing voxel visualizations
+    const clearVoxelVisualizations = (scene) => {
+      const voxelGroup = scene.getObjectByName('voxelGroup');
+      if (voxelGroup) {
+        scene.remove(voxelGroup);
+      }
+    };
+    
+    if (voxelSceneRef.current) clearVoxelVisualizations(voxelSceneRef.current);
+    if (legoSceneRef.current) clearVoxelVisualizations(legoSceneRef.current);
+    
+    // --- VIEWPORT 2: VOXEL VISUALIZATION ---
+    
+    // Get color values from context
+    const modelRgb = colorConfig[modelColor]?.rgb || [255, 0, 0]; // Default to red
+    const supportRgb = colorConfig[supportColor]?.rgb || [128, 128, 128]; // Default to gray
+    
+    // Create materials for voxel grid overlay
+    const voxelWireframeMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(
+        modelRgb[0] / 255,
+        modelRgb[1] / 255,
+        modelRgb[2] / 255
+      ),
+      wireframe: true,
+      transparent: true,
+      opacity: 0.5
+    });
+    
+    const voxelSolidMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(
+        modelRgb[0] / 255,
+        modelRgb[1] / 255,
+        modelRgb[2] / 255
+      ),
+      transparent: true,
+      opacity: 0.3
+    });
+    
+    const supportVoxelWireframeMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(
+        supportRgb[0] / 255,
+        supportRgb[1] / 255,
+        supportRgb[2] / 255
+      ),
+      wireframe: true,
+      transparent: true,
+      opacity: 0.5
+    });
+    
+    const supportVoxelSolidMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(
+        supportRgb[0] / 255,
+        supportRgb[1] / 255,
+        supportRgb[2] / 255
+      ),
+      transparent: true,
+      opacity: 0.3
+    });
+    
+    // Count voxels for instanced meshes
+    const countModelVoxels = voxels.reduce((count, layer) => 
+      count + layer.reduce((layerCount, row) => 
+        layerCount + row.filter(voxel => voxel === 1).length, 0
+      ), 0
+    );
+    
+    const countSupportVoxels = supportVoxels.reduce((count, layer) => 
+      count + layer.reduce((layerCount, row) => 
+        layerCount + row.filter(voxel => voxel === 1).length, 0
+      ), 0
+    );
+    
+    // Create voxel group for the second viewport
+    const voxelGroup = new THREE.Group();
+    voxelGroup.name = 'voxelGroup';
+    
+    // Create box geometry for voxels
+    const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+    
+    // Use instanced meshes for better performance
+    const modelVoxelMesh = new THREE.InstancedMesh(
+      voxelGeometry, 
+      voxelSolidMaterial, 
+      countModelVoxels
+    );
+    
+    const modelVoxelWireframeMesh = new THREE.InstancedMesh(
+      voxelGeometry, 
+      voxelWireframeMaterial, 
+      countModelVoxels
+    );
+    
+    const supportVoxelMesh = new THREE.InstancedMesh(
+      voxelGeometry, 
+      supportVoxelSolidMaterial, 
+      countSupportVoxels
+    );
+    
+    const supportVoxelWireframeMesh = new THREE.InstancedMesh(
+      voxelGeometry, 
+      supportVoxelWireframeMaterial, 
+      countSupportVoxels
+    );
+    
+    // Calculate the grid offset to center voxels at origin
+    const gridOffset = 8; // Half of the 16x16 grid size
+    
+    // Use matrices for setting instances
+    const matrix = new THREE.Matrix4();
+    
+    // Add model voxels
+    let modelInstanceIndex = 0;
+    let supportInstanceIndex = 0;
+    
+    // Iterate through the voxel grid and add voxels to the scene
+    for (let y = 0; y < voxels.length; y++) {
+      // Skip this layer if layer view is enabled and it's not the current layer
+      if (layerViewMode && currentLayer !== y) continue;
       
-      // --- VIEWPORT 2: VOXELIZED GRID ---
-      if (voxelSceneRef.current) {
-        // Remove previous voxel visualization
-        const voxelGroup = voxelSceneRef.current.getObjectByName('voxelGroup');
-        if (voxelGroup) {
-          voxelSceneRef.current.remove(voxelGroup);
-        }
-        
-        // Create a group for the voxel grid overlay
-        const gridVoxelGroup = new THREE.Group();
-        gridVoxelGroup.name = 'voxelGroup';
-        
-        // Create materials if they don't exist
-        const wireMaterial = new THREE.MeshBasicMaterial({
-          color: 0x00ff00,
-          wireframe: true,
-          transparent: true,
-          opacity: 0.5
-        });
-        
-        const modelMaterial = new THREE.MeshBasicMaterial({
-          color: 0x0088ff,
-          transparent: true,
-          opacity: 0.3
-        });
-        
-        const supportMaterial = new THREE.MeshBasicMaterial({
-          color: 0xff8800,
-          transparent: true,
-          opacity: 0.3
-        });
-        
-        // Count the number of voxels for instanced meshes
-        const modelVoxelCount = countVoxels(voxels, layerViewMode ? currentLayer : null);
-        const supportVoxelCount = countSupportVoxels(voxels, supportVoxels, layerViewMode ? currentLayer : null);
-        
-        // Use instanced mesh for better performance
-        const modelWireframeMesh = new THREE.InstancedMesh(
-          wireframeGeometry,
-          wireMaterial,
-          modelVoxelCount
-        );
-        
-        const modelSolidMesh = new THREE.InstancedMesh(
-          wireframeGeometry,
-          modelMaterial,
-          modelVoxelCount
-        );
-        
-        const supportWireframeMesh = new THREE.InstancedMesh(
-          wireframeGeometry,
-          wireMaterial,
-          supportVoxelCount
-        );
-        
-        const supportSolidMesh = new THREE.InstancedMesh(
-          wireframeGeometry,
-          supportMaterial,
-          supportVoxelCount
-        );
-        
-        // Create matrices for positioning each voxel
-        const matrix = new THREE.Matrix4();
-        let modelInstanceIndex = 0;
-        let supportInstanceIndex = 0;
-        
-        // Grid center offset - ensures voxels are properly centered at origin
-        // For a 16x16 grid, the coordinates go from -8 to 7 with centers at -7.5 to 7.5
-        const gridOffset = voxels.length / 2;
-        
-        // Add model voxels to grid
-        for (let x = 0; x < voxels.length; x++) {
-          for (let z = 0; z < voxels[x].length; z++) {
-            for (let y = 0; y < voxels[x][z].length; y++) {
-              // In layer view mode, only show voxels up to the current layer
-              if (layerViewMode && y > currentLayer) continue;
-              
-              if (voxels[x][z][y]) {
-                // Calculate position relative to center of grid
-                // X and Z centered at origin, Y starts at 0 (on the ground)
-                const position = new THREE.Vector3(
-                  x - gridOffset + 0.5,  // Center of voxel at x
-                  y + 0.5,               // Center of voxel at y 
-                  z - gridOffset + 0.5   // Center of voxel at z
-                );
-                
-                // Set matrix for this instance
-                matrix.makeTranslation(position.x, position.y, position.z);
-                
-                // Set the matrix for both model meshes
-                modelWireframeMesh.setMatrixAt(modelInstanceIndex, matrix);
-                modelSolidMesh.setMatrixAt(modelInstanceIndex, matrix);
-                modelInstanceIndex++;
-              }
-            }
+      for (let z = 0; z < voxels[y].length; z++) {
+        for (let x = 0; x < voxels[y][z].length; x++) {
+          if (voxels[y][z][x] === 1) {
+            // Position the voxel - center the grid by subtracting gridOffset
+            // x and z are centered at origin, y starts at ground level (Y=0)
+            const position = new THREE.Vector3(
+              x - gridOffset + 0.5, // Center of voxel + offset to center the grid
+              y + 0.5,              // Center of voxel + start at Y=0
+              z - gridOffset + 0.5  // Center of voxel + offset to center the grid
+            );
+            
+            // Set the matrix for this instance
+            matrix.makeTranslation(position.x, position.y, position.z);
+            modelVoxelMesh.setMatrixAt(modelInstanceIndex, matrix);
+            modelVoxelWireframeMesh.setMatrixAt(modelInstanceIndex, matrix);
+            modelInstanceIndex++;
           }
         }
-        
-        // Add support voxels to grid
-        for (let x = 0; x < supportVoxels.length; x++) {
-          for (let z = 0; z < supportVoxels[x].length; z++) {
-            for (let y = 0; y < supportVoxels[x][z].length; y++) {
-              // In layer view mode, only show voxels up to the current layer
-              if (layerViewMode && y > currentLayer) continue;
-              
-              if (supportVoxels[x][z][y] && !voxels[x][z][y]) {
-                // Calculate position relative to center of grid
-                const position = new THREE.Vector3(
-                  x - gridOffset + 0.5,  // Center of voxel at x
-                  y + 0.5,               // Center of voxel at y 
-                  z - gridOffset + 0.5   // Center of voxel at z
-                );
-                
-                // Set matrix for this instance
-                matrix.makeTranslation(position.x, position.y, position.z);
-                
-                // Set the matrix for both support meshes
-                supportWireframeMesh.setMatrixAt(supportInstanceIndex, matrix);
-                supportSolidMesh.setMatrixAt(supportInstanceIndex, matrix);
-                supportInstanceIndex++;
-              }
-            }
-          }
-        }
-        
-        // Add all meshes to the group
-        gridVoxelGroup.add(modelWireframeMesh);
-        gridVoxelGroup.add(modelSolidMesh);
-        gridVoxelGroup.add(supportWireframeMesh);
-        gridVoxelGroup.add(supportSolidMesh);
-        
-        // Add grid overlay to scene
-        voxelSceneRef.current.add(gridVoxelGroup);
       }
+    }
+    
+    // Add support voxels
+    for (let y = 0; y < supportVoxels.length; y++) {
+      // Skip this layer if layer view is enabled and it's not the current layer
+      if (layerViewMode && currentLayer !== y) continue;
       
-      // --- VIEWPORT 3: LEGO BRICK RENDER ---
-      if (legoSceneRef.current) {
-        // Remove previous voxel visualization
-        const legoGroup = legoSceneRef.current.getObjectByName('voxelGroup');
-        if (legoGroup) {
-          legoSceneRef.current.remove(legoGroup);
-        }
-        
-        // Create a group for the LEGO bricks
-        const legoBrickGroup = new THREE.Group();
-        legoBrickGroup.name = 'voxelGroup';
-        
-        // Get colors from context
-        const modelRgb = colorConfig[modelColor]?.rgb || [255, 204, 0];
-        const supportRgb = colorConfig[supportColor]?.rgb || [77, 77, 77];
-        
-        // Create materials
-        const modelMaterial = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(
-            modelRgb[0] / 255,
-            modelRgb[1] / 255,
-            modelRgb[2] / 255
-          ),
-          metalness: 0.1,
-          roughness: 0.5
-        });
-        
-        const supportMaterial = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(
-            supportRgb[0] / 255,
-            supportRgb[1] / 255,
-            supportRgb[2] / 255
-          ),
-          metalness: 0.1,
-          roughness: 0.5,
-          transparent: true,
-          opacity: 0.7
-        });
-        
-        const studMaterial = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          metalness: 0.3,
-          roughness: 0.3
-        });
-        
-        // Find the maximum layer height
-        let maxHeight = 0;
-        for (let y = 0; y < voxels[0][0].length; y++) {
-          let hasVoxelsInLayer = false;
-          
-          for (let x = 0; x < voxels.length && !hasVoxelsInLayer; x++) {
-            for (let z = 0; z < voxels[x].length && !hasVoxelsInLayer; z++) {
-              if (voxels[x][z][y] || (supportVoxels[x][z][y] && !voxels[x][z][y])) {
-                hasVoxelsInLayer = true;
-                maxHeight = y;
-              }
-            }
+      for (let z = 0; z < supportVoxels[y].length; z++) {
+        for (let x = 0; x < supportVoxels[y][z].length; x++) {
+          // Only add support bricks where there's a support voxel AND NOT a model voxel
+          // This prevents overlapping bricks
+          if (supportVoxels[y][z][x] === 1 && voxels[y][z][x] !== 1) {
+            // Position the brick - center the grid by subtracting gridOffset
+            // x and z are centered at origin, y starts at ground level (Y=0)
+            const position = new THREE.Vector3(
+              x - gridOffset + 0.5, // Center of brick + offset to center the grid
+              y + 0.5,             // Center of brick + start at Y=0
+              z - gridOffset + 0.5  // Center of brick + offset to center the grid
+            );
+            
+            // Set the matrix for the brick
+            matrix.makeTranslation(position.x, position.y, position.z);
+            supportVoxelMesh.setMatrixAt(supportInstanceIndex, matrix);
+            supportVoxelWireframeMesh.setMatrixAt(supportInstanceIndex, matrix);
+            supportInstanceIndex++;
           }
-        }
-        
-        setMaxLayer(maxHeight);
-        if (currentLayer === null) {
-          setCurrentLayer(maxHeight);
-        }
-        
-        // Count instances for model and support bricks
-        const modelBrickCount = countVoxels(voxels, layerViewMode ? currentLayer : null);
-        const modelStudCount = countStuds(voxels, layerViewMode ? currentLayer : null);
-        const supportBrickCount = countSupportVoxels(voxels, supportVoxels, layerViewMode ? currentLayer : null);
-        const supportStudCount = countSupportStuds(voxels, supportVoxels, layerViewMode ? currentLayer : null);
-        
-        // Create instanced meshes for bricks and studs
-        const modelBrickMesh = new THREE.InstancedMesh(brickGeometry, modelMaterial, modelBrickCount);
-        const modelStudMesh = new THREE.InstancedMesh(studGeometry, studMaterial, modelStudCount);
-        const supportBrickMesh = new THREE.InstancedMesh(brickGeometry, supportMaterial, supportBrickCount);
-        const supportStudMesh = new THREE.InstancedMesh(studGeometry, studMaterial, supportStudCount);
-        
-        // Temp matrix for setting instances
-        const brickMatrix = new THREE.Matrix4();
-        const studMatrix = new THREE.Matrix4();
-        let modelBrickIndex = 0;
-        let modelStudIndex = 0;
-        let supportBrickIndex = 0;
-        let supportStudIndex = 0;
-        
-        // Grid center offset - ensures voxels are properly centered at origin
-        const gridOffset = voxels.length / 2;
-        
-        // Add model voxels as LEGO bricks
-        for (let x = 0; x < voxels.length; x++) {
-          for (let z = 0; z < voxels[x].length; z++) {
-            for (let y = 0; y < voxels[x][z].length; y++) {
-              // In layer view mode, only show voxels up to the current layer
-              if (layerViewMode && y > currentLayer) continue;
-              
-              if (voxels[x][z][y]) {
-                // Position centered on grid
-                const position = new THREE.Vector3(
-                  x - gridOffset + 0.5,  // Center of brick at x
-                  y + 0.5,               // Center of brick at y
-                  z - gridOffset + 0.5   // Center of brick at z
-                );
-                
-                // Set brick position
-                brickMatrix.makeTranslation(position.x, position.y, position.z);
-                modelBrickMesh.setMatrixAt(modelBrickIndex, brickMatrix);
-                modelBrickIndex++;
-                
-                // Add stud on top of brick
-                studMatrix.identity();
-                studMatrix.makeRotationX(Math.PI / 2); // Rotate cylinder to point upward
-                studMatrix.setPosition(position.x, position.y + 0.55, position.z);
-                modelStudMesh.setMatrixAt(modelStudIndex, studMatrix);
-                modelStudIndex++;
-              }
-            }
-          }
-        }
-        
-        // Add support voxels as LEGO bricks
-        for (let x = 0; x < supportVoxels.length; x++) {
-          for (let z = 0; z < supportVoxels[x].length; z++) {
-            for (let y = 0; y < supportVoxels[x][z].length; y++) {
-              // In layer view mode, only show voxels up to the current layer
-              if (layerViewMode && y > currentLayer) continue;
-              
-              if (supportVoxels[x][z][y] && !voxels[x][z][y]) {
-                // Position centered on grid
-                const position = new THREE.Vector3(
-                  x - gridOffset + 0.5,  // Center of brick at x
-                  y + 0.5,               // Center of brick at y
-                  z - gridOffset + 0.5   // Center of brick at z
-                );
-                
-                // Set support brick position
-                brickMatrix.makeTranslation(position.x, position.y, position.z);
-                supportBrickMesh.setMatrixAt(supportBrickIndex, brickMatrix);
-                supportBrickIndex++;
-                
-                // Add stud on top of support brick
-                studMatrix.identity();
-                studMatrix.makeRotationX(Math.PI / 2); // Rotate cylinder to point upward
-                studMatrix.setPosition(position.x, position.y + 0.55, position.z);
-                supportStudMesh.setMatrixAt(supportStudIndex, studMatrix);
-                supportStudIndex++;
-              }
-            }
-          }
-        }
-        
-        // Add all meshes to the group
-        legoBrickGroup.add(modelBrickMesh);
-        legoBrickGroup.add(modelStudMesh);
-        legoBrickGroup.add(supportBrickMesh);
-        legoBrickGroup.add(supportStudMesh);
-        
-        // Add layer highlight in layer view mode
-        if (layerViewMode && currentLayer >= 0 && currentLayer <= maxHeight) {
-          // Create a layer highlight material
-          const layerHighlightMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffff00,
-            transparent: true,
-            opacity: 0.2,
-            side: THREE.DoubleSide
-          });
-          
-          // Create a plane for the layer highlight
-          const layerGeometry = new THREE.PlaneGeometry(16, 16);
-          const layerPlane = new THREE.Mesh(layerGeometry, layerHighlightMaterial);
-          layerPlane.position.set(0, currentLayer + 0.5, 0);
-          layerPlane.rotation.x = Math.PI / 2;
-          legoBrickGroup.add(layerPlane);
-        }
-        
-        // Add LEGO brick group to scene
-        legoSceneRef.current.add(legoBrickGroup);
-      }
-    } catch (error) {
-      console.error('Error visualizing voxels:', error);
-    }
-  };
-  
-  // Helper function to count the total number of voxels
-  const countVoxels = (voxels, maxLayer = null) => {
-    let count = 0;
-    for (let x = 0; x < voxels.length; x++) {
-      for (let z = 0; z < voxels[x].length; z++) {
-        for (let y = 0; y < voxels[x][z].length; y++) {
-          if (maxLayer !== null && y > maxLayer) continue;
-          if (voxels[x][z][y]) count++;
         }
       }
     }
-    return count;
-  };
-
-  // Helper function to count the total number of support voxels
-  const countSupportVoxels = (voxels, supportVoxels, maxLayer = null) => {
-    let count = 0;
-    for (let x = 0; x < supportVoxels.length; x++) {
-      for (let z = 0; z < supportVoxels[x].length; z++) {
-        for (let y = 0; y < supportVoxels[x][z].length; y++) {
-          if (maxLayer !== null && y > maxLayer) continue;
-          if (supportVoxels[x][z][y] && !voxels[x][z][y]) count++;
-        }
-      }
-    }
-    return count;
-  };
-
-  // Helper function to count the total number of studs for model voxels
-  const countStuds = (voxels, maxLayer = null) => {
-    let count = 0;
-    for (let x = 0; x < voxels.length; x++) {
-      for (let z = 0; z < voxels[x].length; z++) {
-        for (let y = 0; y < voxels[x][z].length; y++) {
-          if (maxLayer !== null) {
-            if (y === maxLayer) continue; // No studs on top layer in layer view mode
-            if (y > maxLayer) continue;
+    
+    // Add all voxel meshes to the group
+    voxelGroup.add(modelVoxelMesh);
+    voxelGroup.add(modelVoxelWireframeMesh);
+    voxelGroup.add(supportVoxelMesh);
+    voxelGroup.add(supportVoxelWireframeMesh);
+    
+    // Add voxel group to the voxel scene
+    voxelSceneRef.current.add(voxelGroup);
+    
+    // Add debug visualization to voxel scene
+    addDebugVisualization(voxelGroup, voxelSceneRef.current);
+    
+    // --- VIEWPORT 3: LEGO BRICK VISUALIZATION ---
+    
+    // Create a copy of the voxel group for the LEGO scene
+    const legoGroup = new THREE.Group();
+    legoGroup.name = 'voxelGroup'; // Keep same name for consistency
+    
+    // Define brick and stud geometries
+    const brickGeometry = new THREE.BoxGeometry(1, 0.5, 1); // Half height for proper brick proportions
+    const studGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16);
+    
+    // Define brick materials - use the actual colors from the context
+    const modelBrickMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(
+        modelRgb[0] / 255,
+        modelRgb[1] / 255,
+        modelRgb[2] / 255
+      ),
+      metalness: 0.1,
+      roughness: 0.3
+    });
+    
+    const supportBrickMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(
+        supportRgb[0] / 255,
+        supportRgb[1] / 255,
+        supportRgb[2] / 255
+      ),
+      metalness: 0.1,
+      roughness: 0.3
+    });
+    
+    // Create instanced meshes for bricks and studs
+    const modelBrickMesh = new THREE.InstancedMesh(
+      brickGeometry,
+      modelBrickMaterial,
+      countModelVoxels
+    );
+    
+    const modelStudMesh = new THREE.InstancedMesh(
+      studGeometry,
+      modelBrickMaterial,
+      countModelVoxels
+    );
+    
+    const supportBrickMesh = new THREE.InstancedMesh(
+      brickGeometry,
+      supportBrickMaterial,
+      countSupportVoxels
+    );
+    
+    const supportStudMesh = new THREE.InstancedMesh(
+      studGeometry,
+      supportBrickMaterial,
+      countSupportVoxels
+    );
+    
+    // Temporary matrices for setting instances
+    const brickMatrix = new THREE.Matrix4();
+    const studMatrix = new THREE.Matrix4();
+    
+    // Reset instance counters
+    modelInstanceIndex = 0;
+    supportInstanceIndex = 0;
+    
+    // Add model bricks
+    for (let y = 0; y < voxels.length; y++) {
+      // Skip this layer if layer view is enabled and it's not the current layer
+      if (layerViewMode && currentLayer !== y) continue;
+      
+      for (let z = 0; z < voxels[y].length; z++) {
+        for (let x = 0; x < voxels[y][z].length; x++) {
+          if (voxels[y][z][x] === 1) {
+            // Position the brick - center the grid by subtracting gridOffset
+            // x and z are centered at origin, y starts at ground level (Y=0)
+            const position = new THREE.Vector3(
+              x - gridOffset + 0.5, // Center of brick + offset to center the grid
+              y + 0.25,            // Center of brick (reduced height) + start at Y=0
+              z - gridOffset + 0.5  // Center of brick + offset to center the grid
+            );
+            
+            // Set the matrix for the brick
+            brickMatrix.makeTranslation(position.x, position.y, position.z);
+            modelBrickMesh.setMatrixAt(modelInstanceIndex, brickMatrix);
+            
+            // Add a stud on top of the brick
+            studMatrix.identity(); // Reset to identity matrix
+            
+            // Rotate stud to point upward (by default cylinder is along Y axis)
+            studMatrix.makeRotationX(Math.PI / 2);
+            
+            // Position stud at the center-top of the brick
+            studMatrix.setPosition(position.x, position.y + 0.25 + 0.05, position.z);
+            
+            modelStudMesh.setMatrixAt(modelInstanceIndex, studMatrix);
+            modelInstanceIndex++;
           }
-          if (voxels[x][z][y]) count++;
         }
       }
     }
-    return count;
-  };
-
-  // Helper function to count the total number of studs for support voxels
-  const countSupportStuds = (voxels, supportVoxels, maxLayer = null) => {
-    let count = 0;
-    for (let x = 0; x < supportVoxels.length; x++) {
-      for (let z = 0; z < supportVoxels[x].length; z++) {
-        for (let y = 0; y < supportVoxels[x][z].length; y++) {
-          if (maxLayer !== null) {
-            if (y === maxLayer) continue; // No studs on top layer in layer view mode
-            if (y > maxLayer) continue;
+    
+    // Add support bricks
+    for (let y = 0; y < supportVoxels.length; y++) {
+      // Skip this layer if layer view is enabled and it's not the current layer
+      if (layerViewMode && currentLayer !== y) continue;
+      
+      for (let z = 0; z < supportVoxels[y].length; z++) {
+        for (let x = 0; x < supportVoxels[y][z].length; x++) {
+          // Only add support bricks where there's a support voxel AND NOT a model voxel
+          // This prevents overlapping bricks
+          if (supportVoxels[y][z][x] === 1 && voxels[y][z][x] !== 1) {
+            // Position the brick - center the grid by subtracting gridOffset
+            // x and z are centered at origin, y starts at ground level (Y=0)
+            const position = new THREE.Vector3(
+              x - gridOffset + 0.5, // Center of brick + offset to center the grid
+              y + 0.25,            // Center of brick (reduced height) + start at Y=0
+              z - gridOffset + 0.5  // Center of brick + offset to center the grid
+            );
+            
+            // Set the matrix for the brick
+            brickMatrix.makeTranslation(position.x, position.y, position.z);
+            supportBrickMesh.setMatrixAt(supportInstanceIndex, brickMatrix);
+            
+            // Add a stud on top of the brick
+            studMatrix.identity(); // Reset to identity matrix
+            
+            // Rotate stud to point upward (by default cylinder is along Y axis)
+            studMatrix.makeRotationX(Math.PI / 2);
+            
+            // Position stud at the center-top of the brick
+            studMatrix.setPosition(position.x, position.y + 0.25 + 0.05, position.z);
+            
+            supportStudMesh.setMatrixAt(supportInstanceIndex, studMatrix);
+            supportInstanceIndex++;
           }
-          if (supportVoxels[x][z][y] && !voxels[x][z][y]) count++;
         }
       }
     }
-    return count;
+    
+    // Add brick meshes to the LEGO group
+    legoGroup.add(modelBrickMesh);
+    legoGroup.add(modelStudMesh);
+    legoGroup.add(supportBrickMesh);
+    legoGroup.add(supportStudMesh);
+    
+    // Add LEGO group to the scene
+    legoSceneRef.current.add(legoGroup);
+    
+    // Add debug visualization to LEGO scene
+    addDebugVisualization(legoGroup, legoSceneRef.current);
   };
   
   // Toggle layer view mode
@@ -1032,14 +1200,41 @@ const ThreeDHome = () => {
   // Apply scale changes
   const applyScale = () => {
     if (modelFile) {
-      processSTLFile(modelFile);
+      console.log("Applying scale factor:", scale);
+      setProcessingMessage("Updating model with new scale...");
+      setIsProcessing(true);
+      setProgress(10);
+      
+      // Short delay to allow UI to update
+      setTimeout(() => {
+        processSTLFile(modelFile);
+      }, 100);
     }
   };
   
-  // Reset view
+  // Reset camera views for all viewports
   const resetView = () => {
+    // Set camera to a good position for viewing the model
     if (originalControlsRef.current) {
-      originalControlsRef.current.reset();
+      // Position the camera at an angle that shows the model and buildplate well
+      originalCameraRef.current.position.set(15, 15, 15);
+      
+      // Look at the center of the model (slightly above the buildplate for better view)
+      originalControlsRef.current.target.set(0, 5, 0);
+      originalControlsRef.current.update();
+    }
+    
+    // Sync the other cameras to match the first viewport
+    if (voxelControlsRef.current) {
+      voxelCameraRef.current.position.copy(originalCameraRef.current.position);
+      voxelControlsRef.current.target.copy(originalControlsRef.current.target);
+      voxelControlsRef.current.update();
+    }
+    
+    if (legoControlsRef.current) {
+      legoCameraRef.current.position.copy(originalCameraRef.current.position);
+      legoControlsRef.current.target.copy(originalControlsRef.current.target);
+      legoControlsRef.current.update();
     }
   };
   
