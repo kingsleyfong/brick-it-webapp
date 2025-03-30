@@ -13,20 +13,28 @@ const HelpModal = ({ onClose }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
+  // Track which section is expanded for mobile view
+  const [expandedSection, setExpandedSection] = useState(null);
+
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Help & Information</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">Help & Information</h2>
           <button 
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white"
+            aria-label="Close"
           >
             &times;
           </button>
         </div>
         
-        <div className="prose prose-lg">
+        <div className="prose prose-lg dark:prose-invert">
           <h3>About Brick It</h3>
           <p>
             Brick It is a web application that transforms images and 3D models into LEGO-compatible instructions.
@@ -46,6 +54,9 @@ const HelpModal = ({ onClose }) => {
           <p>
             <strong>Step 4:</strong> Export as PNG for reference, or as a .txt file for use with LEGO building machines
           </p>
+          <p>
+            <strong>Step 5:</strong> Optionally save your project as JSON to continue working on it later
+          </p>
           
           <h3>3D Model Mode</h3>
           <p>
@@ -58,7 +69,10 @@ const HelpModal = ({ onClose }) => {
             <strong>Step 3:</strong> View the model in 3D and adjust settings
           </p>
           <p>
-            <strong>Step 4:</strong> Export as a .txt file for use with LEGO building machines
+            <strong>Step 4:</strong> Use layer-by-layer viewing to see detailed construction steps
+          </p>
+          <p>
+            <strong>Step 5:</strong> Export as a .txt file for use with LEGO building machines
           </p>
           
           <h3>Color Configuration</h3>
@@ -67,11 +81,23 @@ const HelpModal = ({ onClose }) => {
             button in the header. Each color can be assigned to a specific dispenser number.
           </p>
           
+          <h3>Mobile Usage Tips</h3>
+          <p>
+            Brick It is fully optimized for mobile devices. Here are some tips for the best experience:
+          </p>
+          <ul>
+            <li><strong>Orientation:</strong> Landscape mode works best for the 3D viewer</li>
+            <li><strong>Pinch to zoom:</strong> Use pinch gestures to zoom in/out of the 3D model</li>
+            <li><strong>Long press:</strong> Long press on bricks for additional options</li>
+            <li><strong>Save often:</strong> Use the save feature to avoid losing work</li>
+            <li><strong>Layer navigation:</strong> Swipe left/right to navigate 3D model layers</li>
+          </ul>
+          
           <h3>Output Format</h3>
           <p>
             The .txt output is in a simple format that can be used with LEGO building machines:
           </p>
-          <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
+          <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded overflow-x-auto">
             &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;color index&gt;
           </pre>
           <p>
@@ -94,7 +120,7 @@ const HelpModal = ({ onClose }) => {
         <div className="flex justify-end mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
           >
             Close
           </button>

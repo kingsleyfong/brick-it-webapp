@@ -12,6 +12,9 @@ module.exports = {
       gridTemplateRows: {
         '16': 'repeat(16, minmax(0, 1fr))',
       },
+      animation: {
+        'progress': 'progress 2s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

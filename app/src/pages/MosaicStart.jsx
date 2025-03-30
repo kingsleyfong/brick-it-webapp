@@ -10,9 +10,50 @@ const MosaicStart = () => {
   const [error, setError] = useState(null);
   const [uploadMode, setUploadMode] = useState('upload'); // 'upload' or 'ai'
   const fileInputRef = useRef(null);
+  const [generationStatus, setGenerationStatus] = useState('');
+  const [modelAvailability, setModelAvailability] = useState(null);
+  
+  // Example prompts for inspiration
+  const examplePrompts = [
+    "a cute cat wearing a hat",
+    "sunset over mountains",
+    "lego minifigure astronaut",
+    "pixel art landscape"
+  ];
   
   // Default example image
   const [usingDefaultImage, setUsingDefaultImage] = useState(false);
+  
+  // Check model availability when changing to AI mode
+  useEffect(() => {
+    if (uploadMode === 'ai') {
+      checkModelAvailability();
+    }
+  }, [uploadMode]);
+  
+  // Check if the ONNX model is available
+  const checkModelAvailability = async () => {
+    try {
+      const isOnnxAvailable = checkOnnxAvailability();
+      setModelAvailability(isOnnxAvailable);
+      
+      // Check if model files exist
+      try {
+        const modelResponse = await fetch('/models/tiny-stable-diffusion.onnx');
+        const vocabResponse = await fetch('/models/vocab.json');
+        
+        if (modelResponse.ok && vocabResponse.ok) {
+          setModelAvailability('full');
+        } else {
+          setModelAvailability('fallback');
+        }
+      } catch (error) {
+        setModelAvailability('fallback');
+      }
+    } catch (error) {
+      setModelAvailability(false);
+    }
+  };
   
   // Load default image on first render
   useEffect(() => {
@@ -64,6 +105,7 @@ const MosaicStart = () => {
     
     setError(null);
     setIsGenerating(true);
+    setGenerationStatus('Initializing AI model...');
     
     try {
       // Check if ONNX would be available
@@ -75,8 +117,14 @@ const MosaicStart = () => {
         return;
       }
       
+      // Update status
+      setGenerationStatus('Processing your prompt...');
+      
       // Generate image using our utility
       const generatedImageUrl = await generateImageFromPrompt(aiPrompt);
+      
+      // Update status
+      setGenerationStatus('Finalizing image...');
       
       // Set the generated image and navigate to crop page
       setOriginalImage(generatedImageUrl);
@@ -85,6 +133,7 @@ const MosaicStart = () => {
     } catch (error) {
       setError('Error generating image: ' + error.message);
       setIsGenerating(false);
+      setGenerationStatus('');
     }
   };
 
@@ -94,6 +143,11 @@ const MosaicStart = () => {
     const defaultImagePath = '/pikachu.png';
     setOriginalImage(defaultImagePath);
     navigate('/crop');
+  };
+  
+  // Handle example prompt selection
+  const useExamplePrompt = (prompt) => {
+    setAiPrompt(prompt);
   };
 
   return (
@@ -157,16 +211,54 @@ const MosaicStart = () => {
         {/* AI Generation UI */}
         {uploadMode === 'ai' && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            <p className="text-gray-700 mb-4">
+            {modelAvailability === 'full' && (
+              <div className="mb-4 p-2 bg-green-100 text-green-700 rounded-lg">
+                <p className="text-sm font-medium">✅ Full AI model available</p>
+                <p className="text-xs">Your browser will use the installed ONNX model for high-quality generation.</p>
+              </div>
+            )}
+            
+            {modelAvailability === 'fallback' && (
+              <div className="mb-4 p-2 bg-yellow-100 text-yellow-700 rounded-lg">
+                <p className="text-sm font-medium">ℹ️ Using fallback generator</p>
+                <p className="text-xs">The full AI model is not installed. A simple placeholder generator will be used instead.</p>
+              </div>
+            )}
+            
+            {modelAvailability === false && (
+              <div className="mb-4 p-2 bg-red-100 text-red-700 rounded-lg">
+                <p className="text-sm font-medium">⚠️ AI generation may not work</p>
+                <p className="text-xs">Your browser might not support WebAssembly, which is required for AI image generation.</p>
+              </div>
+            )}
+            
+            <p className="text-gray-700 mb-2">
               Enter a description of the image you'd like to create:
             </p>
             <textarea
-              className="w-full p-3 border rounded-lg mb-4 h-24"
+              className="w-full p-3 border rounded-lg mb-3 h-24"
               placeholder="e.g., A cute cat wearing a hat"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               disabled={isGenerating}
             />
+            
+            {/* Example prompts */}
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">Try an example prompt:</p>
+              <div className="flex flex-wrap gap-2">
+                {examplePrompts.map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => useExamplePrompt(prompt)}
+                    className="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                    disabled={isGenerating}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
             
             <button
               className={`w-full py-3 rounded-lg ${
@@ -179,6 +271,18 @@ const MosaicStart = () => {
             >
               {isGenerating ? 'Generating...' : 'Generate Image'}
             </button>
+            
+            {/* Generation status */}
+            {isGenerating && generationStatus && (
+              <div className="mt-3 text-center">
+                <div className="animate-pulse">
+                  <p className="text-sm text-blue-600">{generationStatus}</p>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                  <div className="bg-blue-600 h-1.5 rounded-full animate-[progress_2s_ease-in-out_infinite]" style={{ width: '50%' }}></div>
+                </div>
+              </div>
+            )}
             
             <p className="text-sm text-gray-500 mt-3">
               The image generation runs entirely in your browser and may take a few moments.

@@ -21,7 +21,59 @@ body {
   min-height: 100vh;
 }
 
-/* Mobile-friendly adjustments */
+/* Custom animations */
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+/* Ensure buttons are finger-friendly on all devices */
+button, 
+.button, 
+[type="button"], 
+[type="submit"] {
+  min-height: 40px;
+  touch-action: manipulation;
+}
+
+/* Improve spacing and layout on small tablets */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  
+  /* Adjust grid for tablets */
+  .grid-cols-16 {
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+  }
+  
+  .grid-rows-16 {
+    grid-template-rows: repeat(16, minmax(0, 1fr));
+  }
+  
+  /* Ensure 3D viewer is a reasonable height on tablets */
+  .h-\[600px\] {
+    height: 500px;
+  }
+}
+
+/* Mobile-friendly adjustments for very small screens */
 @media (max-width: 640px) {
   h1 {
     font-size: 1.5rem !important;
@@ -65,6 +117,16 @@ body {
   /* Ensure 3D viewer is a reasonable height on mobile */
   .h-\[600px\] {
     height: 400px;
+  }
+  
+  /* Adjust header for mobile */
+  .header-title {
+    font-size: 1.25rem;
+  }
+  
+  /* Make range inputs more finger-friendly */
+  input[type=range] {
+    height: 24px;
   }
 }
 
