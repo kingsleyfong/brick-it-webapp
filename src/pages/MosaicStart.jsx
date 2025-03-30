@@ -152,7 +152,7 @@ const MosaicStart = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         LEGO Mosaic Creator
       </h1>
       
@@ -160,13 +160,13 @@ const MosaicStart = () => {
         {/* Mode Selection Tabs */}
         <div className="flex mb-6 bg-gray-100 rounded-lg overflow-hidden">
           <button
-            className={`flex-1 py-3 ${uploadMode === 'upload' ? 'bg-blue-600 text-white' : 'text-gray-700'}`}
+            className={`flex-1 py-3 ${uploadMode === 'upload' ? 'bg-blue-600 text-white' : 'text-gray-800'}`}
             onClick={() => setUploadMode('upload')}
           >
             Upload Image
           </button>
           <button
-            className={`flex-1 py-3 ${uploadMode === 'ai' ? 'bg-blue-600 text-white' : 'text-gray-700'}`}
+            className={`flex-1 py-3 ${uploadMode === 'ai' ? 'bg-blue-600 text-white' : 'text-gray-800'}`}
             onClick={() => setUploadMode('ai')}
           >
             Generate with AI
@@ -180,12 +180,12 @@ const MosaicStart = () => {
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
               onClick={() => fileInputRef.current.click()}
             >
-              <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+              <svg className="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                 <path d="M24 8l-4 4h-8v24h32v-24h-8l-4-4h-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M12 32l8-8 4 4 8-8 8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <p className="mt-2 text-sm text-gray-600">Click to select an image, or drag and drop</p>
-              <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+              <p className="mt-2 text-sm text-gray-800">Click to select an image, or drag and drop</p>
+              <p className="text-xs text-gray-700 mt-1">PNG, JPG, GIF up to 10MB</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -232,7 +232,7 @@ const MosaicStart = () => {
               </div>
             )}
             
-            <p className="text-gray-700 mb-2">
+            <p className="text-gray-800 mb-2">
               Enter a description of the image you'd like to create:
             </p>
             <textarea
@@ -245,7 +245,7 @@ const MosaicStart = () => {
             
             {/* Example prompts */}
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Try an example prompt:</p>
+              <p className="text-sm text-gray-800 mb-2">Try an example prompt:</p>
               <div className="flex flex-wrap gap-2">
                 {examplePrompts.map((prompt, index) => (
                   <button
@@ -284,7 +284,7 @@ const MosaicStart = () => {
               </div>
             )}
             
-            <p className="text-sm text-gray-500 mt-3">
+            <p className="text-sm text-gray-700 mt-3">
               The image generation runs entirely in your browser and may take a few moments.
             </p>
           </div>

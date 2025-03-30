@@ -1129,7 +1129,7 @@ const ThreeDHome = () => {
             {voxelData && (
               <div className="mb-4 border-t pt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm text-gray-600">
+                  <label className="text-sm font-medium text-gray-800">
                     Layer View:
                   </label>
                   <button
@@ -1146,15 +1146,15 @@ const ThreeDHome = () => {
                   <>
                     <div className="flex items-center justify-between mb-2">
                       <button
-                        className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        className="px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
                         onClick={() => moveLayerDown()}
                         disabled={currentLayer === 0}
                       >
                         -
                       </button>
-                      <span className="font-medium">Layer {currentLayer + 1} of {maxLayer + 1}</span>
+                      <span className="font-medium text-gray-800">Layer {currentLayer + 1} of {maxLayer + 1}</span>
                       <button
-                        className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        className="px-2 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
                         onClick={() => moveLayerUp()}
                         disabled={currentLayer === maxLayer}
                       >
@@ -1188,13 +1188,13 @@ const ThreeDHome = () => {
             
             {/* Color Selection */}
             <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">
+              <label className="block text-sm font-medium text-gray-800 mb-1">
                 Model Brick Color
               </label>
               <select
                 value={modelColor}
                 onChange={(e) => setModelColor(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-gray-800 bg-white"
               >
                 {Object.entries(colorConfig).map(([colorName, colorData]) => (
                   <option key={colorName} value={colorName}>
@@ -1205,13 +1205,13 @@ const ThreeDHome = () => {
             </div>
             
             <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">
+              <label className="block text-sm font-medium text-gray-800 mb-1">
                 Support Brick Color
               </label>
               <select
                 value={supportColor}
                 onChange={(e) => setSupportColor(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded text-gray-800 bg-white"
               >
                 {Object.entries(colorConfig).map(([colorName, colorData]) => (
                   <option key={colorName} value={colorName}>
@@ -1224,17 +1224,17 @@ const ThreeDHome = () => {
           
           {/* Export Section */}
           <div className="bg-white rounded-lg shadow-md p-4">
-            <h2 className="text-xl font-bold mb-4">Export</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Export</h2>
             
             <div className="mb-4">
-              <label className="block text-sm text-gray-600 mb-1">
+              <label className="block text-sm font-medium text-gray-800 mb-1">
                 File Name
               </label>
               <input
                 type="text"
                 value={fileName}
                 onChange={(e) => setFileName(e.target.value)}
-                className="w-full rounded border p-2"
+                className="w-full rounded border p-2 text-gray-800"
               />
             </div>
             
@@ -1248,19 +1248,19 @@ const ThreeDHome = () => {
             
             {/* Brick Stats */}
             <div className="bg-gray-50 p-3 rounded-lg">
-              <h3 className="font-semibold mb-2">Brick Statistics</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Brick Statistics</h3>
               <div className="text-sm">
                 <div className="flex justify-between">
-                  <span>Total Bricks:</span>
-                  <span className="font-medium">{modelStats.totalBricks}</span>
+                  <span className="text-gray-800">Total Bricks:</span>
+                  <span className="font-medium text-gray-800">{modelStats.totalBricks}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Model Bricks:</span>
-                  <span className="font-medium">{modelStats.modelBricks}</span>
+                  <span className="text-gray-800">Model Bricks:</span>
+                  <span className="font-medium text-gray-800">{modelStats.modelBricks}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Support Bricks:</span>
-                  <span className="font-medium">{modelStats.supportBricks}</span>
+                  <span className="text-gray-800">Support Bricks:</span>
+                  <span className="font-medium text-gray-800">{modelStats.supportBricks}</span>
                 </div>
               </div>
             </div>
@@ -1285,9 +1285,9 @@ const ThreeDHome = () => {
         <div className="lg:col-span-3">
           {/* Viewport Headers */}
           <div className="grid grid-cols-3 gap-4 mb-2">
-            <div className="text-center font-medium">Original STL Model</div>
-            <div className="text-center font-medium">Voxelized Grid</div>
-            <div className="text-center font-medium">LEGO Brick Render</div>
+            <div className="text-center viewport-label">Original STL Model</div>
+            <div className="text-center viewport-label">Voxelized Grid</div>
+            <div className="text-center viewport-label">LEGO Brick Render</div>
           </div>
           
           {/* Triple Viewport Container */}
@@ -1299,7 +1299,7 @@ const ThreeDHome = () => {
             >
               {isProcessing && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-                  <div className="animate-pulse text-white">Processing...</div>
+                  <div className="animate-pulse text-high-contrast">Processing...</div>
                 </div>
               )}
             </div>
@@ -1311,7 +1311,7 @@ const ThreeDHome = () => {
             >
               {isProcessing && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-                  <div className="animate-pulse text-white">Processing...</div>
+                  <div className="animate-pulse text-high-contrast">Processing...</div>
                 </div>
               )}
             </div>
@@ -1323,7 +1323,7 @@ const ThreeDHome = () => {
             >
               {isProcessing && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-                  <div className="animate-pulse text-white">Processing...</div>
+                  <div className="animate-pulse text-high-contrast">Processing...</div>
                 </div>
               )}
             </div>
@@ -1331,21 +1331,25 @@ const ThreeDHome = () => {
           
           {/* Processing Overlay */}
           {isProcessing && (
-            <div className="mt-4 bg-white rounded-lg shadow-md p-4">
-              <p className="text-center text-gray-700 mb-4">
-                Processing Model...
-              </p>
-              
-              <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-                <div 
-                  className="bg-blue-600 h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                ></div>
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Processing Model</h3>
+                
+                <div className="w-full bg-gray-200 rounded-full h-6 mb-3">
+                  <div 
+                    className="bg-blue-600 h-6 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                
+                <p className="text-center text-gray-800 font-medium mb-2">
+                  {progress}% Complete
+                </p>
+                
+                <p className="text-center text-gray-700">
+                  {processingMessage}
+                </p>
               </div>
-              
-              <p className="text-center text-sm text-gray-500">
-                {processingMessage}
-              </p>
             </div>
           )}
         </div>
@@ -1392,6 +1396,20 @@ const ThreeDHome = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Success message */}
+      {exportSuccess && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded shadow-md z-50">
+          <span className="font-medium">Export successful!</span>
+        </div>
+      )}
+      
+      {/* Error message */}
+      {error && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded shadow-md z-50">
+          <span className="font-medium">{error}</span>
         </div>
       )}
     </div>

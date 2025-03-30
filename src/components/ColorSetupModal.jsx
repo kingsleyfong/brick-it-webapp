@@ -62,7 +62,7 @@ const ColorSetupModal = ({ onClose }) => {
           </button>
         </div>
         
-        <p className="mb-4 text-gray-700">
+        <p className="mb-4 text-gray-800">
           Configure the colors for each dispenser in your LEGO machine.
         </p>
         
@@ -83,7 +83,7 @@ const ColorSetupModal = ({ onClose }) => {
               </div>
               
               <div>
-                <label className="block text-sm text-gray-600 mb-1">
+                <label className="block text-sm text-gray-800 mb-1">
                   Color (HEX)
                 </label>
                 <input
@@ -95,7 +95,7 @@ const ColorSetupModal = ({ onClose }) => {
               </div>
               
               <div>
-                <label className="block text-sm text-gray-600 mb-1">
+                <label className="block text-sm text-gray-800 mb-1">
                   Dispenser Number
                 </label>
                 <input

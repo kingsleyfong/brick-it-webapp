@@ -460,7 +460,7 @@ const PreviewPanel = () => {
   
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Your LEGO Mosaic
       </h1>
       
@@ -506,7 +506,7 @@ const PreviewPanel = () => {
                 onChange={(e) => setShowGrid(e.target.checked)}
                 className="form-checkbox h-5 w-5 text-blue-600"
               />
-              <span className="ml-2 text-gray-700">Show Grid</span>
+              <span className="ml-2 text-gray-800 font-medium">Show Grid</span>
             </label>
           </div>
           
@@ -529,17 +529,17 @@ const PreviewPanel = () => {
         
         {/* Right Column - Export */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">Export for LEGO Printer</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Export for LEGO Printer</h2>
           
           <div className="mb-4">
-            <label className="block text-sm text-gray-600 mb-1">
+            <label className="block text-sm font-medium text-gray-800 mb-1">
               File Name
             </label>
             <input
               type="text"
               value={fileName}
               onChange={(e) => setFileName(e.target.value)}
-              className="w-full rounded border p-2"
+              className="w-full rounded border p-2 text-gray-800"
             />
           </div>
           
@@ -573,19 +573,19 @@ const PreviewPanel = () => {
             />
           </div>
           
-          <h3 className="text-lg font-semibold mb-2">Brick Count</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Brick Count</h3>
           <div className="max-h-[200px] overflow-y-auto border rounded-lg p-3 bg-gray-50">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-1">Color</th>
-                  <th className="text-right py-1">Count</th>
+                  <th className="text-left py-1 text-gray-800">Color</th>
+                  <th className="text-right py-1 text-gray-800">Count</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(colorCounts).map(([colorName, count]) => (
                   <tr key={colorName} className="border-b border-gray-200">
-                    <td className="py-1 flex items-center">
+                    <td className="py-1 flex items-center text-gray-800">
                       <div 
                         className="w-4 h-4 rounded-full mr-2"
                         style={{ 
@@ -594,7 +594,7 @@ const PreviewPanel = () => {
                       ></div>
                       {colorName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </td>
-                    <td className="text-right py-1">{count}</td>
+                    <td className="text-right py-1 text-gray-800">{count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -603,15 +603,17 @@ const PreviewPanel = () => {
           
           {/* Success message */}
           {exportSuccess && (
-            <div className="mt-4 p-3 bg-green-100 text-green-700 rounded-lg">
-              {exportSuccess === true ? 'Operation successful!' : exportSuccess}
+            <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-800 rounded-lg shadow-md">
+              <span className="font-medium">
+                {exportSuccess === true ? 'Operation successful!' : exportSuccess}
+              </span>
             </div>
           )}
           
           {/* Error message */}
           {exportError && (
-            <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
-              {exportError}
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-800 rounded-lg shadow-md">
+              <span className="font-medium">{exportError}</span>
             </div>
           )}
         </div>
