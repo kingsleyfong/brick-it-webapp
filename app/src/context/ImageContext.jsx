@@ -17,6 +17,9 @@ export const ImageProvider = ({ children }) => {
   const [modelFile, setModelFile] = useState(null);
   const [voxelizedModel, setVoxelizedModel] = useState(null);
   
+  // Recent projects
+  const [recentProjects, setRecentProjects] = useState([]);
+  
   // Color configuration
   const [colorConfig, setColorConfig] = useState({
     'yellow': { rgb: [255, 204, 0], dispenser: 1 },
@@ -43,6 +46,12 @@ export const ImageProvider = ({ children }) => {
         const savedColorConfig = localStorage.getItem('colorConfig');
         if (savedColorConfig) {
           setColorConfig(JSON.parse(savedColorConfig));
+        }
+        
+        // Load recent projects
+        const savedRecentProjects = localStorage.getItem('recentProjects');
+        if (savedRecentProjects) {
+          setRecentProjects(JSON.parse(savedRecentProjects));
         }
         
         // Only load mosaic data if we're in mosaic mode
@@ -89,6 +98,11 @@ export const ImageProvider = ({ children }) => {
       localStorage.setItem('colorConfig', JSON.stringify(colorConfig));
     }
     
+    // Save recent projects
+    if (recentProjects.length > 0) {
+      localStorage.setItem('recentProjects', JSON.stringify(recentProjects));
+    }
+    
     // Only save mosaic data if there's data to save
     if (originalImage || croppedImage || pixelatedImage || legoImage || aiPrompt || cropArea) {
       if (originalImage) localStorage.setItem('originalImage', originalImage);
@@ -107,7 +121,39 @@ export const ImageProvider = ({ children }) => {
       if (supportColor) localStorage.setItem('supportColor', supportColor);
     }
   }, [originalImage, croppedImage, pixelatedImage, legoImage, aiPrompt, cropArea, 
-      modelFile, voxelizedModel, colorConfig, modelColor, supportColor]);
+      modelFile, voxelizedModel, colorConfig, modelColor, supportColor, recentProjects]);
+
+  // Save a new project to the recent projects list
+  const saveProject = (name, type, thumbnail = null) => {
+    try {
+      const newProject = {
+        id: Date.now().toString(),
+        name: name || `Untitled ${type === 'mosaic' ? 'Mosaic' : '3D Model'}`,
+        type,
+        thumbnail,
+        date: new Date().toISOString()
+      };
+      
+      // Add to beginning of recent projects list, limit to 10 projects
+      const updatedProjects = [newProject, ...recentProjects].slice(0, 10);
+      setRecentProjects(updatedProjects);
+      
+      return newProject.id;
+    } catch (error) {
+      console.error('Error saving project:', error);
+      return null;
+    }
+  };
+  
+  // Delete a project from the recent projects list
+  const deleteProject = (projectId) => {
+    try {
+      const updatedProjects = recentProjects.filter(project => project.id !== projectId);
+      setRecentProjects(updatedProjects);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+    }
+  };
 
   // Clear mosaic data
   const clearMosaicData = () => {
@@ -169,6 +215,11 @@ export const ImageProvider = ({ children }) => {
         setModelColor,
         supportColor,
         setSupportColor,
+        
+        // Recent projects
+        recentProjects,
+        saveProject,
+        deleteProject
       }}
     >
       {children}

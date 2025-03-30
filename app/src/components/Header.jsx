@@ -26,6 +26,13 @@ const Header = () => {
                 Home
               </Link>
               
+              <Link 
+                to="/dashboard" 
+                className="px-3 py-1 rounded hover:bg-red-700 transition-colors"
+              >
+                Dashboard
+              </Link>
+              
               <button
                 onClick={() => setIsColorModalOpen(true)}
                 className="px-3 py-1 rounded bg-yellow-500 text-black hover:bg-yellow-400 transition-colors"

@@ -6,7 +6,16 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { voxelizeMesh, generateTxtFileContent } from '../utils/voxelization';
 
 const ThreeDHome = () => {
-  const { modelFile, setModelFile, colorConfig, modelColor, setModelColor, supportColor, setSupportColor } = useImageContext();
+  const { 
+    modelFile, 
+    setModelFile, 
+    colorConfig, 
+    modelColor, 
+    setModelColor, 
+    supportColor, 
+    setSupportColor,
+    saveProject
+  } = useImageContext();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -435,13 +444,18 @@ const ThreeDHome = () => {
       link.click();
       document.body.removeChild(link);
       
+      // Save to recent projects
+      // Create a thumbnail from the current 3D view
+      const thumbnailDataUrl = rendererRef.current?.domElement.toDataURL('image/png');
+      saveProject(fileName, '3d', thumbnailDataUrl);
+      
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (error) {
       console.error('Error exporting TXT:', error);
       setError('Error exporting TXT: ' + error.message);
     }
-  }, [voxelData, fileName, colorConfig, modelColor, supportColor]);
+  }, [voxelData, fileName, colorConfig, modelColor, supportColor, saveProject, rendererRef]);
   
   // Handle color change and update visualization
   useEffect(() => {

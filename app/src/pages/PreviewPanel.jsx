@@ -209,13 +209,16 @@ const PreviewPanel = () => {
       link.click();
       document.body.removeChild(link);
       
+      // Save to recent projects
+      saveProject(fileName, 'mosaic', legoImage);
+      
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (error) {
       console.error('Error exporting JSON:', error);
       setExportError('Error exporting JSON: ' + error.message);
     }
-  }, [originalImage, croppedImage, pixelatedImage, legoImage, colorConfig, fileName]);
+  }, [originalImage, croppedImage, pixelatedImage, legoImage, colorConfig, fileName, saveProject]);
   
   // Import JSON project
   const importJSON = (e) => {

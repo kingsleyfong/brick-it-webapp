@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
 import MosaicStart from './pages/MosaicStart';
 import CropImage from './pages/CropImage';
 import MosaicGenerator from './pages/MosaicGenerator';
@@ -18,6 +19,7 @@ function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/mosaic" element={<MosaicStart />} />
               <Route path="/crop" element={<CropImage />} />
               <Route path="/mosaic-generator" element={<MosaicGenerator />} />

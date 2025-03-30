@@ -10,12 +10,12 @@ const Home = () => {
         Welcome to <span className="text-red-600">Brick It</span>
       </h1>
       
-      <p className="text-center text-lg max-w-2xl mx-auto mb-12">
+      <p className="text-center text-lg max-w-2xl mx-auto mb-8">
         Transform your images and 3D models into LEGO-compatible instructions.
         Choose a mode to get started.
       </p>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-8">
         {/* Mosaic Mode Card */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="h-48 bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center">
@@ -55,6 +55,19 @@ const Home = () => {
             </Link>
           </div>
         </div>
+      </div>
+      
+      {/* Dashboard Link */}
+      <div className="max-w-4xl mx-auto mb-12">
+        <Link 
+          to="/dashboard" 
+          className="block w-full text-center py-3 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+        >
+          View Your Dashboard
+        </Link>
+        <p className="text-center text-sm text-gray-500 mt-2">
+          Access your recent projects, settings, and app statistics
+        </p>
       </div>
       
       <div className="mt-12 text-center text-sm text-gray-500">
