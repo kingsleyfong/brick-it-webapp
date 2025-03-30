@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import ColorSetupModal from './ColorSetupModal';
+import HelpModal from './HelpModal';
 
 const Header = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isColorModalOpen, setIsColorModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const location = useLocation();
 
   return (
@@ -25,19 +27,32 @@ const Header = () => {
               </Link>
               
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setIsColorModalOpen(true)}
                 className="px-3 py-1 rounded bg-yellow-500 text-black hover:bg-yellow-400 transition-colors"
               >
                 Color Setup
               </button>
             </>
           )}
+          
+          {/* Always show help button */}
+          <button
+            onClick={() => setIsHelpModalOpen(true)}
+            className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-400 transition-colors"
+          >
+            Help
+          </button>
         </div>
       </div>
       
       {/* Color Setup Modal */}
-      {isModalOpen && (
-        <ColorSetupModal onClose={() => setIsModalOpen(false)} />
+      {isColorModalOpen && (
+        <ColorSetupModal onClose={() => setIsColorModalOpen(false)} />
+      )}
+      
+      {/* Help Modal */}
+      {isHelpModalOpen && (
+        <HelpModal onClose={() => setIsHelpModalOpen(false)} />
       )}
     </header>
   );

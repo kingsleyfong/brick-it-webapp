@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useImageContext } from '../context/ImageContext';
 
 const PreviewPanel = () => {
   const navigate = useNavigate();
-  const { legoImage, pixelatedImage, colorConfig } = useImageContext();
+  const { legoImage, pixelatedImage, colorConfig, originalImage, croppedImage, setOriginalImage, setCroppedImage } = useImageContext();
   
+  const fileInputRef = useRef(null);
   const [showGrid, setShowGrid] = useState(true);
   const [fileName, setFileName] = useState('');
   const [exportError, setExportError] = useState(null);
@@ -186,6 +187,75 @@ const PreviewPanel = () => {
     }
   }, [legoImage, fileName, colorConfig]);
   
+  // Export as JSON project
+  const exportAsJSON = useCallback(() => {
+    try {
+      const projectData = {
+        originalImage,
+        croppedImage,
+        pixelatedImage,
+        legoImage,
+        colorConfig,
+        version: "1.0", // For future compatibility
+        dateCreated: new Date().toISOString()
+      };
+      
+      // Create a download link
+      const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${fileName}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error exporting JSON:', error);
+      setExportError('Error exporting JSON: ' + error.message);
+    }
+  }, [originalImage, croppedImage, pixelatedImage, legoImage, colorConfig, fileName]);
+  
+  // Import JSON project
+  const importJSON = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setExportError(null);
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const projectData = JSON.parse(event.target.result);
+        
+        // Validate project data
+        if (!projectData.originalImage || !projectData.croppedImage || !projectData.legoImage) {
+          throw new Error('Invalid project file format');
+        }
+        
+        // Load the images into the context
+        setOriginalImage(projectData.originalImage);
+        setCroppedImage(projectData.croppedImage);
+        
+        // Show success message
+        setExportSuccess(true);
+        setTimeout(() => {
+          setExportSuccess(false);
+          // Redirect to a proper page to show the loaded project
+          navigate('/mosaic-generator');
+        }, 2000);
+      } catch (error) {
+        console.error('Error importing project:', error);
+        setExportError('Error importing project: ' + error.message);
+      }
+    };
+    reader.onerror = () => {
+      setExportError('Error reading file');
+    };
+    reader.readAsText(file);
+  };
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-8">
@@ -272,11 +342,34 @@ const PreviewPanel = () => {
           </div>
           
           <button
-            className="w-full py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 mb-6"
+            className="w-full py-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 mb-4"
             onClick={exportAsTXT}
           >
             Export for LEGO Printer (.txt)
           </button>
+          
+          <div className="flex space-x-4 mb-6">
+            <button
+              className="flex-1 py-2 px-4 bg-purple-600 text-white rounded hover:bg-purple-700"
+              onClick={exportAsJSON}
+            >
+              Save Project (.json)
+            </button>
+            
+            <button
+              className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              onClick={() => fileInputRef.current.click()}
+            >
+              Load Project
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".json"
+              onChange={importJSON}
+            />
+          </div>
           
           <h3 className="text-lg font-semibold mb-2">Brick Count</h3>
           <div className="max-h-[200px] overflow-y-auto border rounded-lg p-3 bg-gray-50">
@@ -309,7 +402,7 @@ const PreviewPanel = () => {
           {/* Success message */}
           {exportSuccess && (
             <div className="mt-4 p-3 bg-green-100 text-green-700 rounded-lg">
-              Export successful!
+              {exportSuccess === true ? 'Operation successful!' : exportSuccess}
             </div>
           )}
           

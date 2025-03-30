@@ -21,6 +21,54 @@ body {
   min-height: 100vh;
 }
 
+/* Mobile-friendly adjustments */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Make buttons easier to tap on mobile */
+  button, 
+  .button, 
+  [type="button"], 
+  [type="submit"] {
+    min-height: 44px;
+  }
+  
+  /* Improve spacing on mobile */
+  .p-6 {
+    padding: 1rem;
+  }
+  
+  .mb-8 {
+    margin-bottom: 1rem;
+  }
+  
+  /* Adjust grid for mobile */
+  .grid-cols-16 {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+  
+  .grid-rows-16 {
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+  }
+  
+  /* Ensure 3D viewer is a reasonable height on mobile */
+  .h-\[600px\] {
+    height: 400px;
+  }
+}
+
+/* Dark mode adjustments */
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

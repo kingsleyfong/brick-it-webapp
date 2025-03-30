@@ -21,6 +21,9 @@ const ThreeDHome = () => {
   const [voxelData, setVoxelData] = useState(null);
   const [scale, setScale] = useState(1.0);
   const [defaultModelAvailable, setDefaultModelAvailable] = useState(false);
+  const [currentLayer, setCurrentLayer] = useState(null);
+  const [maxLayer, setMaxLayer] = useState(0);
+  const [layerViewMode, setLayerViewMode] = useState(false);
   
   // Three.js references
   const mountRef = useRef(null);
@@ -297,10 +300,33 @@ const ThreeDHome = () => {
         opacity: 0.7
       });
       
+      // Find the maximum layer height
+      let maxHeight = 0;
+      for (let z = 0; z < voxels[0][0].length; z++) {
+        let hasVoxelsInLayer = false;
+        
+        for (let x = 0; x < voxels.length && !hasVoxelsInLayer; x++) {
+          for (let y = 0; y < voxels[x].length && !hasVoxelsInLayer; y++) {
+            if (voxels[x][y][z] || (supportVoxels[x][y][z] && !voxels[x][y][z])) {
+              hasVoxelsInLayer = true;
+              maxHeight = z;
+            }
+          }
+        }
+      }
+      
+      setMaxLayer(maxHeight);
+      if (currentLayer === null) {
+        setCurrentLayer(maxHeight);
+      }
+      
       // Add model voxels
       for (let x = 0; x < voxels.length; x++) {
         for (let y = 0; y < voxels[x].length; y++) {
           for (let z = 0; z < voxels[x][y].length; z++) {
+            // In layer view mode, only show voxels up to the current layer
+            if (layerViewMode && z > currentLayer) continue;
+            
             if (voxels[x][y][z]) {
               const voxel = new THREE.Mesh(boxGeometry, modelMaterial);
               voxel.position.set(x - 8 + 0.5, z + 0.5, y - 8 + 0.5);
@@ -314,6 +340,9 @@ const ThreeDHome = () => {
       for (let x = 0; x < supportVoxels.length; x++) {
         for (let y = 0; y < supportVoxels[x].length; y++) {
           for (let z = 0; z < supportVoxels[x][y].length; z++) {
+            // In layer view mode, only show voxels up to the current layer
+            if (layerViewMode && z > currentLayer) continue;
+            
             if (supportVoxels[x][y][z] && !voxels[x][y][z]) {
               const voxel = new THREE.Mesh(boxGeometry, supportMaterial);
               voxel.position.set(x - 8 + 0.5, z + 0.5, y - 8 + 0.5);
@@ -323,10 +352,46 @@ const ThreeDHome = () => {
         }
       }
       
+      // Add layer highlight in layer view mode
+      if (layerViewMode && currentLayer >= 0 && currentLayer <= maxHeight) {
+        // Create a layer highlight material
+        const layerHighlightMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+          transparent: true,
+          opacity: 0.2,
+          side: THREE.DoubleSide
+        });
+        
+        // Create a plane for the layer highlight
+        const layerGeometry = new THREE.PlaneGeometry(16, 16);
+        const layerPlane = new THREE.Mesh(layerGeometry, layerHighlightMaterial);
+        layerPlane.position.set(0, currentLayer + 0.5, 0);
+        layerPlane.rotation.x = Math.PI / 2;
+        voxelGroup.add(layerPlane);
+      }
+      
       // Add voxel group to scene
       sceneRef.current.add(voxelGroup);
     } catch (error) {
       console.error('Error visualizing voxels:', error);
+    }
+  };
+  
+  // Change the current layer
+  const changeLayer = (newLayer) => {
+    if (newLayer >= 0 && newLayer <= maxLayer) {
+      setCurrentLayer(newLayer);
+      if (voxelData) {
+        visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
+      }
+    }
+  };
+  
+  // Toggle layer view mode
+  const toggleLayerViewMode = () => {
+    setLayerViewMode(!layerViewMode);
+    if (voxelData) {
+      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
     }
   };
   
@@ -452,6 +517,71 @@ const ThreeDHome = () => {
                 </button>
               </div>
             </div>
+            
+            {/* Layer View Controls */}
+            {voxelData && (
+              <div className="mb-4 border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-gray-600">
+                    Layer View:
+                  </label>
+                  <button
+                    className={`px-3 py-1 rounded ${
+                      layerViewMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
+                    }`}
+                    onClick={toggleLayerViewMode}
+                  >
+                    {layerViewMode ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+                
+                {layerViewMode && (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <button
+                        className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        onClick={() => changeLayer(0)}
+                        disabled={currentLayer === 0}
+                      >
+                        Bottom
+                      </button>
+                      <button
+                        className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        onClick={() => changeLayer(currentLayer - 1)}
+                        disabled={currentLayer <= 0}
+                      >
+                        -
+                      </button>
+                      <span className="font-medium">Layer {currentLayer + 1} of {maxLayer + 1}</span>
+                      <button
+                        className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        onClick={() => changeLayer(currentLayer + 1)}
+                        disabled={currentLayer >= maxLayer}
+                      >
+                        +
+                      </button>
+                      <button
+                        className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                        onClick={() => changeLayer(maxLayer)}
+                        disabled={currentLayer === maxLayer}
+                      >
+                        Top
+                      </button>
+                    </div>
+                    
+                    <input
+                      type="range"
+                      min="0"
+                      max={maxLayer}
+                      step="1"
+                      value={currentLayer}
+                      onChange={(e) => changeLayer(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                  </>
+                )}
+              </div>
+            )}
             
             {/* View Controls */}
             <div className="mb-4">
