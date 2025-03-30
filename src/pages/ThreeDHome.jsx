@@ -466,131 +466,67 @@ const ThreeDHome = () => {
   const orientModelUpright = (mesh) => {
     console.log("Starting model orientation process");
     
-    // Get the current bounding box before any rotations
-    const bbox = new THREE.Box3().setFromObject(mesh);
-    const size = new THREE.Vector3();
-    bbox.getSize(size);
-    
-    console.log("Original dimensions:", size);
-    
-    // Get the center for tracking position changes
-    const center = new THREE.Vector3();
-    bbox.getCenter(center);
-    
-    // Determine which dimension is the largest (should be the height in Y-axis)
-    const dimensions = [
-      { axis: 'x', value: size.x },
-      { axis: 'y', value: size.y },
-      { axis: 'z', value: size.z }
-    ];
-    
-    // Sort dimensions to find the largest one (descending order)
-    dimensions.sort((a, b) => b.value - a.value);
-    
-    console.log("Largest dimension is", dimensions[0].axis, "with size", dimensions[0].value);
-    console.log("Second largest is", dimensions[1].axis, "with size", dimensions[1].value);
-    
-    // First, reset the mesh to origin with no rotation
+    // STEP 1: First, reset the mesh to a known state
     mesh.position.set(0, 0, 0);
     mesh.rotation.set(0, 0, 0);
     mesh.updateMatrix();
     mesh.geometry.applyMatrix4(mesh.matrix);
     mesh.matrix.identity();
     
-    // If the model's largest dimension is not already the Y axis, rotate it
-    if (dimensions[0].axis !== 'y') {
-      console.log(`Orienting model: Largest dimension is ${dimensions[0].axis}, rotating to Y-up`);
+    // STEP 2: Get the current bounding box to analyze dimensions
+    const bbox = new THREE.Box3().setFromObject(mesh);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+    
+    console.log("Original dimensions:", size);
+    
+    // STEP 3: Always make the Y-axis the height by default
+    // Force rotation around X-axis by 90 degrees to ensure the model stands upright
+    // This is a reliable approach based on the Python implementation
+    const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+    mesh.geometry.applyMatrix4(rotationMatrix);
+    
+    // Reset mesh transforms after applying the rotation to geometry
+    mesh.position.set(0, 0, 0);
+    mesh.rotation.set(0, 0, 0);
+    mesh.updateMatrix();
+    
+    // STEP 4: Verify the new dimensions
+    const newBbox = new THREE.Box3().setFromObject(mesh);
+    const newSize = new THREE.Vector3();
+    newBbox.getSize(newSize);
+    console.log("After rotation dimensions:", newSize);
+    
+    // STEP 5: Ensure the y-dimension is properly upright by checking
+    // if we need to flip it another 90 degrees around Z-axis
+    if (newSize.x > newSize.y && newSize.x > newSize.z) {
+      console.log("Additional rotation needed - X axis is still dominant");
+      const additionalRotation = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
+      mesh.geometry.applyMatrix4(additionalRotation);
       
-      // Create a new rotation matrix
-      let rotationMatrix = new THREE.Matrix4();
-      
-      // Determine rotation based on which axis is the largest
-      if (dimensions[0].axis === 'x') {
-        // X is longest, rotate 90 degrees around Z to make X align with Y
-        console.log("Rotating 90 degrees around Z axis");
-        rotationMatrix.makeRotationZ(-Math.PI / 2);
-      } else if (dimensions[0].axis === 'z') {
-        // Z is longest, rotate 90 degrees around X to make Z align with Y
-        console.log("Rotating 90 degrees around X axis");
-        rotationMatrix.makeRotationX(Math.PI / 2);
-      }
-      
-      // Apply the rotation directly to the geometry
-      mesh.geometry.applyMatrix4(rotationMatrix);
-      
-      // Reset position and rotation
+      // Reset mesh transforms after applying the rotation to geometry
       mesh.position.set(0, 0, 0);
       mesh.rotation.set(0, 0, 0);
       mesh.updateMatrix();
       
-      // Recompute the bounding box after rotation
-      const newBbox = new THREE.Box3().setFromObject(mesh);
-      const newSize = new THREE.Vector3();
-      newBbox.getSize(newSize);
-      console.log("Dimensions after first rotation:", newSize);
-      
-      // Get updated size dimensions
-      const newDimensions = [
-        { axis: 'x', value: newSize.x },
-        { axis: 'y', value: newSize.y },
-        { axis: 'z', value: newSize.z }
-      ];
-      newDimensions.sort((a, b) => b.value - a.value);
-      
-      // If Y is still not the largest dimension, apply a second rotation
-      if (newDimensions[0].axis !== 'y') {
-        console.warn("First rotation didn't make Y the largest dimension. Applying second rotation.");
-        
-        // Try a different rotation approach
-        const correctionMatrix = new THREE.Matrix4();
-        
-        if (newDimensions[0].axis === 'x') {
-          console.log("Second rotation: Rotating 90 degrees around Z axis");
-          correctionMatrix.makeRotationZ(-Math.PI / 2);
-        } else if (newDimensions[0].axis === 'z') {
-          console.log("Second rotation: Rotating 90 degrees around X axis");
-          correctionMatrix.makeRotationX(Math.PI / 2);
-        }
-        
-        // Apply the correction
-        mesh.geometry.applyMatrix4(correctionMatrix);
-        mesh.position.set(0, 0, 0);
-        mesh.rotation.set(0, 0, 0);
-        mesh.updateMatrix();
-        
-        // Verify again
-        const correctedBbox = new THREE.Box3().setFromObject(mesh);
-        const correctedSize = new THREE.Vector3();
-        correctedBbox.getSize(correctedSize);
-        console.log("Dimensions after second rotation:", correctedSize);
-      }
+      const finalBbox = new THREE.Box3().setFromObject(mesh);
+      const finalSize = new THREE.Vector3();
+      finalBbox.getSize(finalSize);
+      console.log("Final dimensions after correction:", finalSize);
     }
     
-    // Final forced upright alignment - this ensures the model stands upright
-    // regardless of its initial orientation
+    // STEP 6: Final position correction - ensure bottom is at Y=0
+    // and model is centered on X and Z axes
     const finalBbox = new THREE.Box3().setFromObject(mesh);
-    const finalSize = new THREE.Vector3();
-    finalBbox.getSize(finalSize);
     
-    // If Y is still not the largest dimension, force a rotation around X
-    if (finalSize.y < finalSize.x || finalSize.y < finalSize.z) {
-      console.warn("Model still not properly upright. Forcing alignment.");
-      
-      // Force a 90-degree rotation around X
-      const forceMatrix = new THREE.Matrix4();
-      forceMatrix.makeRotationX(Math.PI / 2);
-      mesh.geometry.applyMatrix4(forceMatrix);
-      
-      mesh.position.set(0, 0, 0);
-      mesh.rotation.set(0, 0, 0);
-      mesh.matrix.identity();
-      
-      // Final verification
-      const forcedBbox = new THREE.Box3().setFromObject(mesh);
-      const forcedSize = new THREE.Vector3();
-      forcedBbox.getSize(forcedSize);
-      console.log("Dimensions after forced correction:", forcedSize);
-    }
+    // Center the model on X and Z axes and ensure it sits on Y=0
+    const correction = new THREE.Vector3();
+    finalBbox.getCenter(correction);
+    correction.y = finalBbox.min.y; // We want to translate up by the minimum Y value
+    
+    mesh.geometry.translate(-correction.x, -correction.y, -correction.z);
+    mesh.position.set(0, 0, 0);
+    mesh.updateMatrix();
     
     console.log("Model orientation complete");
     
@@ -698,7 +634,7 @@ const ThreeDHome = () => {
       originalMesh.rotation.set(0, 0, 0);
       originalMesh.updateMatrix();
       
-      // STEP 2: Orient the model to stand upright (longest dimension along Y-axis)
+      // STEP 2: Orient the model to stand upright
       orientModelUpright(originalMesh);
       
       // STEP 3: Recalculate the bounding box after orientation
@@ -1077,14 +1013,20 @@ const ThreeDHome = () => {
             brickMatrix.makeTranslation(position.x, position.y, position.z);
             modelBrickMesh.setMatrixAt(modelInstanceIndex, brickMatrix);
             
-            // Add a stud on top of the brick
-            studMatrix.identity(); // Reset to identity matrix
+            // Add a stud on top of the brick (properly oriented upwards)
+            // Create a combined matrix that places the stud correctly
+            // First create an identity matrix
+            studMatrix.identity();
             
-            // Rotate stud to point upward (by default cylinder is along Y axis)
-            studMatrix.makeRotationX(Math.PI / 2);
+            // Then apply cylinder rotation to orient it upward along Y axis
+            // No need to rotate as cylinder is already up
             
-            // Position stud at the center-top of the brick
-            studMatrix.setPosition(position.x, position.y + 0.25 + 0.05, position.z);
+            // Then translate to the correct position
+            studMatrix.setPosition(
+              position.x,           // Same X as brick
+              position.y + 0.3,     // Stud is at top of brick (0.5 height / 2 + 0.05 stud offset)
+              position.z            // Same Z as brick
+            );
             
             modelStudMesh.setMatrixAt(modelInstanceIndex, studMatrix);
             modelInstanceIndex++;
@@ -1115,14 +1057,17 @@ const ThreeDHome = () => {
             brickMatrix.makeTranslation(position.x, position.y, position.z);
             supportBrickMesh.setMatrixAt(supportInstanceIndex, brickMatrix);
             
-            // Add a stud on top of the brick
-            studMatrix.identity(); // Reset to identity matrix
+            // Add a stud on top of the support brick (properly oriented upwards)
+            studMatrix.identity();
             
-            // Rotate stud to point upward (by default cylinder is along Y axis)
-            studMatrix.makeRotationX(Math.PI / 2);
+            // No need to rotate as cylinder is already up
             
-            // Position stud at the center-top of the brick
-            studMatrix.setPosition(position.x, position.y + 0.25 + 0.05, position.z);
+            // Then translate to the correct position
+            studMatrix.setPosition(
+              position.x,           // Same X as brick
+              position.y + 0.3,     // Stud is at top of brick (0.5 height / 2 + 0.05 stud offset)
+              position.z            // Same Z as brick
+            );
             
             supportStudMesh.setMatrixAt(supportInstanceIndex, studMatrix);
             supportInstanceIndex++;
@@ -1205,8 +1150,9 @@ const ThreeDHome = () => {
       setIsProcessing(true);
       setProgress(10);
       
-      // Short delay to allow UI to update
+      // Short delay to allow UI to update before reprocessing the STL file
       setTimeout(() => {
+        // Reprocess the STL file with the new scale
         processSTLFile(modelFile);
       }, 100);
     }
@@ -1216,11 +1162,11 @@ const ThreeDHome = () => {
   const resetView = () => {
     // Set camera to a good position for viewing the model
     if (originalControlsRef.current) {
-      // Position the camera at an angle that shows the model and buildplate well
-      originalCameraRef.current.position.set(15, 15, 15);
+      // Position the camera at a 45-degree angle for a good view of the buildplate and model
+      originalCameraRef.current.position.set(12, 12, 12);
       
-      // Look at the center of the model (slightly above the buildplate for better view)
-      originalControlsRef.current.target.set(0, 5, 0);
+      // Look at a point slightly above the buildplate for a better view
+      originalControlsRef.current.target.set(0, 4, 0);
       originalControlsRef.current.update();
     }
     
