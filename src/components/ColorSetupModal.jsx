@@ -104,7 +104,7 @@ const ColorSetupModal = ({ onClose }) => {
                   max="16"
                   value={colorData.dispenser}
                   onChange={(e) => updateColor(colorName, 'dispenser', parseInt(e.target.value))}
-                  className="w-full rounded border p-2"
+                  className="w-full rounded border p-2 bg-white text-gray-800"
                 />
               </div>
             </div>

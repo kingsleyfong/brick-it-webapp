@@ -13,9 +13,10 @@ import * as THREE from 'three';
  * @param {THREE.Mesh} mesh - The mesh to voxelize (mesh should already be properly scaled)
  * @param {number} gridSize - The size of the voxel grid (e.g., 16 for a 16x16x16 grid)
  * @param {number} maxHeight - The maximum height of the voxel grid
+ * @param {number} fixedVoxelSize - Optional fixed size for each voxel unit (in cm), if provided will use real-life LEGO dimensions
  * @return {object} The voxel data including voxels, supportVoxels, and stats
  */
-export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16) {
+export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, fixedVoxelSize = null) {
   console.time('voxelization');
   
   // STEP 1: Setup the voxel grid and spacing
@@ -40,10 +41,20 @@ export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16) {
   console.log("Model size for voxelization:", size);
   console.log("Bounding box for voxelization:", boundingBox);
   
-  // Calculate voxel spacing based on the grid size and bounding box
-  // Use the maximum of X and Z dimensions to maintain proportions
-  // This exactly matches the Python's approach where voxel_size is derived from the model's actual dimensions
-  const voxelSpacing = Math.max(size.x, size.z) / gridSize;
+  // Calculate voxel spacing based on the fixed size or model dimensions
+  let voxelSpacing;
+  
+  if (fixedVoxelSize) {
+    // Use the provided fixed voxel size for real-life LEGO dimensions
+    voxelSpacing = fixedVoxelSize;
+    console.log("Using fixed LEGO brick unit size:", voxelSpacing, "cm");
+  } else {
+    // Calculate voxel spacing based on the grid size and bounding box
+    // Use the maximum of X and Z dimensions to maintain proportions
+    voxelSpacing = Math.max(size.x, size.z) / gridSize;
+    console.log("Using model-based voxel size:", voxelSpacing);
+  }
+  
   const halfGrid = gridSize / 2;
   
   // STEP 3: Prepare for raycasting

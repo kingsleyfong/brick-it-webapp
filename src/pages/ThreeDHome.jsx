@@ -6,6 +6,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { voxelizeMesh, generateTxtFileContent } from '../utils/voxelization';
 
 const ThreeDHome = () => {
+  // Define the standard size of a LEGO brick unit in cm (8mm = 0.8cm)
+  const LEGO_UNIT_SIZE = 0.8;
+  // Define the height-to-width ratio of a standard LEGO brick (6/5 = 1.2)
+  const LEGO_HEIGHT_RATIO = 6/5;
+  
   const { 
     modelFile, 
     setModelFile, 
@@ -575,9 +580,14 @@ const ThreeDHome = () => {
       originalMesh.updateMatrix();
       
       // STEP 2: Apply standard rotation to match trimesh coordinate system
-      // This is the equivalent of the 90-degree rotation to align axes
+      // First, rotate -90 degrees around X-axis to match the typical 3D printable orientation
       const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
       originalMesh.geometry.applyMatrix4(rotationMatrix);
+      
+      // Further rotate the model to align with the voxel and LEGO viewports
+      // This corrects the 90-degree discrepancy between the viewports
+      // Setting explicit rotation rather than using rotateY for more precise control
+      originalMesh.rotation.set(0, Math.PI, 0);
       originalMesh.updateMatrix();
       
       // STEP 3: Convert from mm to cm (0.1 scale) just like Python implementation
@@ -624,8 +634,8 @@ const ThreeDHome = () => {
         
         // Voxelize the model
         // Pass the mesh with its final scale to voxelization
-        // This ensures the voxels match the real-world dimensions of the model
-        const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16);
+        // Using the standard LEGO unit size for consistent real-life dimensions across all viewports
+        const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16, LEGO_UNIT_SIZE);
         setVoxelData(voxelResult);
         setModelStats(voxelResult.stats);
         
@@ -702,7 +712,7 @@ const ThreeDHome = () => {
   })();
 
   // Visualize voxels in the scenes
-  const visualizeVoxels = (voxels, supportVoxels, voxelSize = 1.0) => {
+  const visualizeVoxels = (voxels, supportVoxels, voxelSize = LEGO_UNIT_SIZE) => {
     // First clear any existing voxel visualizations
     const clearVoxelVisualizations = (scene) => {
       const voxelGroup = scene.getObjectByName('voxelGroup');
@@ -782,8 +792,9 @@ const ThreeDHome = () => {
     const voxelGroup = new THREE.Group();
     voxelGroup.name = 'voxelGroup';
     
-    // Create box geometry for voxels with proper size
-    const voxelGeometry = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
+    // Always use standard LEGO unit size for voxel geometry (8mm = 0.8cm) - regardless of model scale
+    // This ensures real-life LEGO dimensions
+    const voxelGeometry = new THREE.BoxGeometry(LEGO_UNIT_SIZE, LEGO_UNIT_SIZE, LEGO_UNIT_SIZE);
     
     // Use instanced meshes for better performance
     const modelVoxelMesh = new THREE.InstancedMesh(
@@ -831,9 +842,9 @@ const ThreeDHome = () => {
             // Position the voxel - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * voxelSize, // Scale position by voxel size
-              (y + 0.5) * voxelSize,              // Scale position by voxel size
-              (z - gridOffset + 0.5) * voxelSize   // Scale position by voxel size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
+              (y + 0.5) * LEGO_UNIT_SIZE,              // Use fixed LEGO unit size
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE   // Use fixed LEGO unit size
             );
             
             // Set the matrix for this instance
@@ -858,10 +869,12 @@ const ThreeDHome = () => {
           if (supportVoxels[y][z][x] === 1 && voxels[y][z][x] !== 1) {
             // Position the brick - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
+            // Position adjusted for the taller brick height
+            const brickHeight = LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO;
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * voxelSize, // Scale position by voxel size
-              (y + 0.5) * voxelSize,              // Scale position by voxel size
-              (z - gridOffset + 0.5) * voxelSize   // Scale position by voxel size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
+              y * LEGO_UNIT_SIZE + (brickHeight / 2),  // Position y so bottom of brick is at grid level
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE  // Use fixed LEGO unit size
             );
             
             // Set the matrix for the brick
@@ -892,17 +905,19 @@ const ThreeDHome = () => {
     const legoGroup = new THREE.Group();
     legoGroup.name = 'voxelGroup'; // Keep same name for consistency
     
-    // Define brick and stud geometries scaled to match voxel size
+    // Define brick and stud geometries using fixed LEGO unit size (8mm = 0.8cm)
+    // This ensures consistent real-life LEGO dimensions
+    // Standard LEGO brick has height approximately 6/5 of its width
     const brickGeometry = new THREE.BoxGeometry(
-      voxelSize * 0.95,           // Slightly smaller than full voxel size
-      voxelSize * 0.5,            // Half height for proper brick proportions
-      voxelSize * 0.95            // Slightly smaller than full voxel size
+      LEGO_UNIT_SIZE * 0.95,           // Slightly smaller than full unit size (width)
+      LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO,   // Proper height for a 1x1 LEGO brick (height)
+      LEGO_UNIT_SIZE * 0.95            // Slightly smaller than full unit size (depth)
     );
     const studGeometry = new THREE.CylinderGeometry(
-      voxelSize * 0.2,            // Stud radius
-      voxelSize * 0.2,            // Stud radius
-      voxelSize * 0.1,            // Stud height
-      16                          // Segments for smooth cylinder
+      LEGO_UNIT_SIZE * 0.3,            // Stud radius
+      LEGO_UNIT_SIZE * 0.3,            // Stud radius
+      LEGO_UNIT_SIZE * 0.16,           // Stud height
+      16                               // Segments for smooth cylinder
     );
     
     // Define brick materials - use the actual colors from the context
@@ -969,10 +984,12 @@ const ThreeDHome = () => {
           if (voxels[y][z][x] === 1) {
             // Position the brick - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
+            // Position adjusted for the taller brick height
+            const brickHeight = LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO;
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * voxelSize, // Scale by voxel size
-              (y + 0.25) * voxelSize,            // Scale by voxel size, adjusted for half-height brick
-              (z - gridOffset + 0.5) * voxelSize  // Scale by voxel size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
+              y * LEGO_UNIT_SIZE + (brickHeight / 2),  // Position y so bottom of brick is at grid level
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE  // Use fixed LEGO unit size
             );
             
             // Set the matrix for the brick
@@ -985,7 +1002,7 @@ const ThreeDHome = () => {
             // Then translate to the correct position
             studMatrix.setPosition(
               position.x,                         // Same X as brick
-              position.y + (voxelSize * 0.3),     // Stud sits on top of brick with proper scaling
+              position.y + (brickHeight / 2) + (LEGO_UNIT_SIZE * 0.08), // Stud sits on top of brick
               position.z                          // Same Z as brick
             );
             
@@ -1008,10 +1025,12 @@ const ThreeDHome = () => {
           if (supportVoxels[y][z][x] === 1 && voxels[y][z][x] !== 1) {
             // Position the brick - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
+            // Position adjusted for the taller brick height
+            const brickHeight = LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO;
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * voxelSize, // Scale by voxel size
-              (y + 0.25) * voxelSize,            // Scale by voxel size, adjusted for half-height brick
-              (z - gridOffset + 0.5) * voxelSize  // Scale by voxel size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
+              y * LEGO_UNIT_SIZE + (brickHeight / 2),  // Position y so bottom of brick is at grid level
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE  // Use fixed LEGO unit size
             );
             
             // Set the matrix for the brick
@@ -1024,7 +1043,7 @@ const ThreeDHome = () => {
             // Then translate to the correct position
             studMatrix.setPosition(
               position.x,                         // Same X as brick
-              position.y + (voxelSize * 0.3),     // Stud sits on top of brick with proper scaling
+              position.y + (brickHeight / 2) + (LEGO_UNIT_SIZE * 0.08), // Stud sits on top of brick
               position.z                          // Same Z as brick
             );
             
@@ -1283,7 +1302,7 @@ const ThreeDHome = () => {
         {/* Left Column - Controls */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h2 className="text-xl font-bold mb-4">Model Options</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Model Options</h2>
             
             {/* STL Upload */}
             <div className="mb-4">
@@ -1407,34 +1426,44 @@ const ThreeDHome = () => {
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 Model Brick Color
               </label>
-              <select
-                value={modelColor}
-                onChange={(e) => setModelColor(e.target.value)}
-                className="w-full p-2 border rounded text-gray-800 bg-white"
-              >
-                {Object.entries(colorConfig).map(([colorName, colorData]) => (
-                  <option key={colorName} value={colorName}>
-                    {colorName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={modelColor}
+                  onChange={(e) => setModelColor(e.target.value)}
+                  className="w-full p-2 border rounded text-gray-800 bg-white pr-12"
+                >
+                  {Object.entries(colorConfig).map(([colorName, colorData]) => (
+                    <option key={colorName} value={colorName}>
+                      {colorName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                  #{colorConfig[modelColor]?.dispenser || '-'}
+                </div>
+              </div>
             </div>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 Support Brick Color
               </label>
-              <select
-                value={supportColor}
-                onChange={(e) => setSupportColor(e.target.value)}
-                className="w-full p-2 border rounded text-gray-800 bg-white"
-              >
-                {Object.entries(colorConfig).map(([colorName, colorData]) => (
-                  <option key={colorName} value={colorName}>
-                    {colorName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={supportColor}
+                  onChange={(e) => setSupportColor(e.target.value)}
+                  className="w-full p-2 border rounded text-gray-800 bg-white pr-12"
+                >
+                  {Object.entries(colorConfig).map(([colorName, colorData]) => (
+                    <option key={colorName} value={colorName}>
+                      {colorName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                  #{colorConfig[supportColor]?.dispenser || '-'}
+                </div>
+              </div>
             </div>
           </div>
           
