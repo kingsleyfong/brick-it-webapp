@@ -10,13 +10,12 @@ import * as THREE from 'three';
 /**
  * Voxelizes a Three.js mesh
  * 
- * @param {THREE.Mesh} mesh - The mesh to voxelize
+ * @param {THREE.Mesh} mesh - The mesh to voxelize (mesh should already be properly scaled)
  * @param {number} gridSize - The size of the voxel grid (e.g., 16 for a 16x16x16 grid)
  * @param {number} maxHeight - The maximum height of the voxel grid
- * @param {number} modelScale - The scale factor applied to the model
  * @return {object} The voxel data including voxels, supportVoxels, and stats
  */
-export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, modelScale = 1) {
+export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16) {
   console.time('voxelization');
   
   // STEP 1: Setup the voxel grid and spacing
@@ -38,11 +37,12 @@ export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, modelScale = 1
   const size = new THREE.Vector3();
   boundingBox.getSize(size);
   
-  console.log("Model size:", size);
-  console.log("Bounding box:", boundingBox);
+  console.log("Model size for voxelization:", size);
+  console.log("Bounding box for voxelization:", boundingBox);
   
   // Calculate voxel spacing based on the grid size and bounding box
   // Use the maximum of X and Z dimensions to maintain proportions
+  // This exactly matches the Python's approach where voxel_size is derived from the model's actual dimensions
   const voxelSpacing = Math.max(size.x, size.z) / gridSize;
   const halfGrid = gridSize / 2;
   
@@ -62,7 +62,7 @@ export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, modelScale = 1
   // to avoid modifying the original mesh
   const tempMesh = mesh.clone();
   
-  console.log("Starting raycasting voxelization");
+  console.log("Starting raycasting voxelization with voxel size:", voxelSpacing);
   
   // STEP 5: Cast rays to determine which voxels are inside the mesh
   // Use primarily top-down rays for consistent voxelization
@@ -251,10 +251,11 @@ export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, modelScale = 1
   console.log("Support structure generated:", totalSupportVoxels, "support voxels");
   console.timeEnd('voxelization');
   
-  // Return the voxelized data with statistics
+  // Return the voxelized data with statistics and voxel size information
   return {
     voxels: grid,
     supportVoxels: supportGrid,
+    voxelSize: voxelSpacing, // Return the calculated voxel size for consistent rendering
     stats: {
       modelBricks: totalModelVoxels,
       supportBricks: totalSupportVoxels,

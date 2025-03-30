@@ -172,18 +172,29 @@ const ThreeDHome = () => {
     let syncingControls = false;
     
     // Function to sync camera positions and targets
-    const syncCameraPosition = (sourceCamera, targetCamera, targetControls) => {
+    const syncCameraPosition = (sourceCamera, targetCamera, targetControls, sourceControls) => {
       if (syncingControls) return;
       
       syncingControls = true;
       
-      // Copy position and rotation
+      // Copy position and rotation exactly
       targetCamera.position.copy(sourceCamera.position);
       targetCamera.rotation.copy(sourceCamera.rotation);
       
-      // Update controls target
-      targetControls.target.copy(originalControls.target);
+      // Update controls target to match exactly
+      targetControls.target.copy(sourceControls.target);
+      
+      // Ensure controls are updated
       targetControls.update();
+      
+      // Force a render to immediately reflect the change
+      if (targetCamera === voxelCameraRef.current && voxelRendererRef.current && voxelSceneRef.current) {
+        voxelRendererRef.current.render(voxelSceneRef.current, voxelCameraRef.current);
+      } else if (targetCamera === legoCameraRef.current && legoRendererRef.current && legoSceneRef.current) {
+        legoRendererRef.current.render(legoSceneRef.current, legoCameraRef.current);
+      } else if (targetCamera === originalCameraRef.current && originalRendererRef.current && originalSceneRef.current) {
+        originalRendererRef.current.render(originalSceneRef.current, originalCameraRef.current);
+      }
       
       syncingControls = false;
     };
@@ -191,22 +202,22 @@ const ThreeDHome = () => {
     // Add change event listeners for the controls
     originalControls.addEventListener('change', () => {
       if (!syncingControls) {
-        syncCameraPosition(originalCamera, voxelCamera, voxelControls);
-        syncCameraPosition(originalCamera, legoCamera, legoControls);
+        syncCameraPosition(originalCamera, voxelCamera, voxelControls, originalControls);
+        syncCameraPosition(originalCamera, legoCamera, legoControls, originalControls);
       }
     });
     
     voxelControls.addEventListener('change', () => {
       if (!syncingControls) {
-        syncCameraPosition(voxelCamera, originalCamera, originalControls);
-        syncCameraPosition(voxelCamera, legoCamera, legoControls);
+        syncCameraPosition(voxelCamera, originalCamera, originalControls, voxelControls);
+        syncCameraPosition(voxelCamera, legoCamera, legoControls, voxelControls);
       }
     });
     
     legoControls.addEventListener('change', () => {
       if (!syncingControls) {
-        syncCameraPosition(legoCamera, originalCamera, originalControls);
-        syncCameraPosition(legoCamera, voxelCamera, voxelControls);
+        syncCameraPosition(legoCamera, originalCamera, originalControls, legoControls);
+        syncCameraPosition(legoCamera, voxelCamera, voxelControls, legoControls);
       }
     });
     
@@ -557,51 +568,45 @@ const ThreeDHome = () => {
       
       const originalMesh = new THREE.Mesh(geometry, originalMaterial);
       
-      // STEP 1: Reset mesh
+      // STEP 1: Reset the mesh to standard position
       originalMesh.position.set(0, 0, 0);
       originalMesh.scale.set(1, 1, 1);
       originalMesh.rotation.set(0, 0, 0);
       originalMesh.updateMatrix();
       
-      // STEP 2: Following Python implementation: Apply important default orientation
-      // Standard rotation for STL models to ensure Y is up (similar to trimesh orientation)
-      // This consistent 90-degree X-axis rotation aligns coordinate systems
+      // STEP 2: Apply standard rotation to match trimesh coordinate system
+      // This is the equivalent of the 90-degree rotation to align axes
       const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
       originalMesh.geometry.applyMatrix4(rotationMatrix);
       originalMesh.updateMatrix();
       
-      // STEP 3: Get the bounding box to determine size and position
+      // STEP 3: Convert from mm to cm (0.1 scale) just like Python implementation
+      // Then apply the user scale factor
+      const mmToCm = 0.1; // Standard conversion from mm to cm for STL files
+      const finalScale = mmToCm * scale;
+      console.log("Applying scale factor: mm to cm (0.1) * user scale (", scale, ") =", finalScale);
+      originalMesh.scale.set(finalScale, finalScale, finalScale);
+      originalMesh.updateMatrix();
+      
+      // STEP 4: Get the mesh's bounding box to determine its position
       const boundingBox = new THREE.Box3().setFromObject(originalMesh);
-      const size = new THREE.Vector3();
-      boundingBox.getSize(size);
-      console.log("Model dimensions:", size);
+      const meshSize = new THREE.Vector3();
+      boundingBox.getSize(meshSize);
+      console.log("Model dimensions after scaling:", meshSize);
       
-      // STEP 4: Apply scale
-      const scaleFactor = scale; // Use the current scale value from state
-      originalMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
-      
-      // STEP 5: Update the bounding box after scaling
-      const scaledBox = new THREE.Box3().setFromObject(originalMesh);
-      const scaledSize = new THREE.Vector3();
-      scaledBox.getSize(scaledSize);
-      console.log("Scaled dimensions:", scaledSize);
-      
-      // STEP 6: MOST IMPORTANT: Position the mesh properly
-      // Get centroid of the bounding box for centering
+      // STEP 5: Center the model in X,Z (equivalent to Python's X,Y centering)
+      // and place bottom on buildplate (Y=0) - matches Python place_on_buildplate
       const centroid = new THREE.Vector3();
-      scaledBox.getCenter(centroid);
+      boundingBox.getCenter(centroid);
       
-      // Python approach: Apply transformations to place on buildplate
-      // 1. Center in X and Z (equivalent to Python's X and Y centering)
-      // 2. Move bottom to Y=0 (equivalent to Python's ensuring min_z at buildplate)
       originalMesh.position.set(
-        -centroid.x,             // Center on X axis
-        -scaledBox.min.y,        // Bottom at Y=0
-        -centroid.z              // Center on Z axis
+        -centroid.x,        // Center on X axis
+        -boundingBox.min.y, // Bottom at Y=0 (buildplate)
+        -centroid.z         // Center on Z axis
       );
       originalMesh.updateMatrix();
       
-      // STEP 7: Create and add model group to scene
+      // STEP 6: Create and add model group to scene
       const originalModelGroup = new THREE.Group();
       originalModelGroup.name = 'modelGroup';
       originalModelGroup.add(originalMesh);
@@ -618,7 +623,9 @@ const ThreeDHome = () => {
         const voxelizationMesh = originalMesh.clone();
         
         // Voxelize the model
-        const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16, scaleFactor);
+        // Pass the mesh with its final scale to voxelization
+        // This ensures the voxels match the real-world dimensions of the model
+        const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16);
         setVoxelData(voxelResult);
         setModelStats(voxelResult.stats);
         
@@ -629,8 +636,8 @@ const ThreeDHome = () => {
         setTimeout(() => {
           updateProgressWithInfo(4);
           
-          // Visualize voxels in both voxel and LEGO viewports
-          visualizeVoxels(voxelResult.voxels, voxelResult.supportVoxels);
+          // Visualize voxels in both voxel and LEGO viewports using the calculated voxel size
+          visualizeVoxels(voxelResult.voxels, voxelResult.supportVoxels, voxelResult.voxelSize);
           
           // Set camera positions to ensure the model is visible in all viewports
           resetView();
@@ -658,7 +665,7 @@ const ThreeDHome = () => {
     }
   };
   
-  // Apply scale changes - following Python approach
+  // Apply scale changes - exactly like Python implementation
   const applyScale = () => {
     if (modelFile) {
       console.log("Applying scale factor:", scale);
@@ -667,11 +674,12 @@ const ThreeDHome = () => {
       setProgress(10);
       
       // Direct approach: completely reprocess the STL file with the new scale
-      // This ensures all viewports are consistently updated
+      // This is identical to Python's approach where it creates a new mesh from the original
+      // and applies the new scale factor
       processSTLFile(modelFile);
     }
   };
-  
+
   // Create a box geometry for the brick body
   const createCachedGeometries = (() => {
     // Cache geometries to avoid creating new ones for each brick
@@ -694,7 +702,7 @@ const ThreeDHome = () => {
   })();
 
   // Visualize voxels in the scenes
-  const visualizeVoxels = (voxels, supportVoxels) => {
+  const visualizeVoxels = (voxels, supportVoxels, voxelSize = 1.0) => {
     // First clear any existing voxel visualizations
     const clearVoxelVisualizations = (scene) => {
       const voxelGroup = scene.getObjectByName('voxelGroup');
@@ -702,6 +710,8 @@ const ThreeDHome = () => {
         scene.remove(voxelGroup);
       }
     };
+    
+    console.log("Visualizing with voxel size:", voxelSize);
     
     if (voxelSceneRef.current) clearVoxelVisualizations(voxelSceneRef.current);
     if (legoSceneRef.current) clearVoxelVisualizations(legoSceneRef.current);
@@ -772,8 +782,8 @@ const ThreeDHome = () => {
     const voxelGroup = new THREE.Group();
     voxelGroup.name = 'voxelGroup';
     
-    // Create box geometry for voxels
-    const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+    // Create box geometry for voxels with proper size
+    const voxelGeometry = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
     
     // Use instanced meshes for better performance
     const modelVoxelMesh = new THREE.InstancedMesh(
@@ -821,9 +831,9 @@ const ThreeDHome = () => {
             // Position the voxel - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
             const position = new THREE.Vector3(
-              x - gridOffset + 0.5, // Center of voxel + offset to center the grid
-              y + 0.5,              // Center of voxel + start at Y=0
-              z - gridOffset + 0.5  // Center of voxel + offset to center the grid
+              (x - gridOffset + 0.5) * voxelSize, // Scale position by voxel size
+              (y + 0.5) * voxelSize,              // Scale position by voxel size
+              (z - gridOffset + 0.5) * voxelSize   // Scale position by voxel size
             );
             
             // Set the matrix for this instance
@@ -849,9 +859,9 @@ const ThreeDHome = () => {
             // Position the brick - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
             const position = new THREE.Vector3(
-              x - gridOffset + 0.5, // Center of brick + offset to center the grid
-              y + 0.5,             // Center of brick + start at Y=0
-              z - gridOffset + 0.5  // Center of brick + offset to center the grid
+              (x - gridOffset + 0.5) * voxelSize, // Scale position by voxel size
+              (y + 0.5) * voxelSize,              // Scale position by voxel size
+              (z - gridOffset + 0.5) * voxelSize   // Scale position by voxel size
             );
             
             // Set the matrix for the brick
@@ -882,9 +892,18 @@ const ThreeDHome = () => {
     const legoGroup = new THREE.Group();
     legoGroup.name = 'voxelGroup'; // Keep same name for consistency
     
-    // Define brick and stud geometries
-    const brickGeometry = new THREE.BoxGeometry(1, 0.5, 1); // Half height for proper brick proportions
-    const studGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16);
+    // Define brick and stud geometries scaled to match voxel size
+    const brickGeometry = new THREE.BoxGeometry(
+      voxelSize * 0.95,           // Slightly smaller than full voxel size
+      voxelSize * 0.5,            // Half height for proper brick proportions
+      voxelSize * 0.95            // Slightly smaller than full voxel size
+    );
+    const studGeometry = new THREE.CylinderGeometry(
+      voxelSize * 0.2,            // Stud radius
+      voxelSize * 0.2,            // Stud radius
+      voxelSize * 0.1,            // Stud height
+      16                          // Segments for smooth cylinder
+    );
     
     // Define brick materials - use the actual colors from the context
     const modelBrickMaterial = new THREE.MeshStandardMaterial({
@@ -951,9 +970,9 @@ const ThreeDHome = () => {
             // Position the brick - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
             const position = new THREE.Vector3(
-              x - gridOffset + 0.5, // Center of brick + offset to center the grid
-              y + 0.25,            // Center of brick (reduced height) + start at Y=0
-              z - gridOffset + 0.5  // Center of brick + offset to center the grid
+              (x - gridOffset + 0.5) * voxelSize, // Scale by voxel size
+              (y + 0.25) * voxelSize,            // Scale by voxel size, adjusted for half-height brick
+              (z - gridOffset + 0.5) * voxelSize  // Scale by voxel size
             );
             
             // Set the matrix for the brick
@@ -961,18 +980,13 @@ const ThreeDHome = () => {
             modelBrickMesh.setMatrixAt(modelInstanceIndex, brickMatrix);
             
             // Add a stud on top of the brick (properly oriented upwards)
-            // Create a combined matrix that places the stud correctly
-            // First create an identity matrix
             studMatrix.identity();
-            
-            // Then apply cylinder rotation to orient it upward along Y axis
-            // No need to rotate as cylinder is already up
             
             // Then translate to the correct position
             studMatrix.setPosition(
-              position.x,           // Same X as brick
-              position.y + 0.3,     // Stud is at top of brick (0.5 height / 2 + 0.05 stud offset)
-              position.z            // Same Z as brick
+              position.x,                         // Same X as brick
+              position.y + (voxelSize * 0.3),     // Stud sits on top of brick with proper scaling
+              position.z                          // Same Z as brick
             );
             
             modelStudMesh.setMatrixAt(modelInstanceIndex, studMatrix);
@@ -995,9 +1009,9 @@ const ThreeDHome = () => {
             // Position the brick - center the grid by subtracting gridOffset
             // x and z are centered at origin, y starts at ground level (Y=0)
             const position = new THREE.Vector3(
-              x - gridOffset + 0.5, // Center of brick + offset to center the grid
-              y + 0.25,            // Center of brick (reduced height) + start at Y=0
-              z - gridOffset + 0.5  // Center of brick + offset to center the grid
+              (x - gridOffset + 0.5) * voxelSize, // Scale by voxel size
+              (y + 0.25) * voxelSize,            // Scale by voxel size, adjusted for half-height brick
+              (z - gridOffset + 0.5) * voxelSize  // Scale by voxel size
             );
             
             // Set the matrix for the brick
@@ -1007,13 +1021,11 @@ const ThreeDHome = () => {
             // Add a stud on top of the support brick (properly oriented upwards)
             studMatrix.identity();
             
-            // No need to rotate as cylinder is already up
-            
             // Then translate to the correct position
             studMatrix.setPosition(
-              position.x,           // Same X as brick
-              position.y + 0.3,     // Stud is at top of brick (0.5 height / 2 + 0.05 stud offset)
-              position.z            // Same Z as brick
+              position.x,                         // Same X as brick
+              position.y + (voxelSize * 0.3),     // Stud sits on top of brick with proper scaling
+              position.z                          // Same Z as brick
             );
             
             supportStudMesh.setMatrixAt(supportInstanceIndex, studMatrix);
@@ -1048,7 +1060,7 @@ const ThreeDHome = () => {
     
     // Update the visualization in all viewports
     if (voxelData) {
-      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
+      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels, voxelData.voxelSize);
     }
   };
   
@@ -1059,7 +1071,7 @@ const ThreeDHome = () => {
     
     // Update the visualization in all viewports
     if (voxelData) {
-      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
+      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels, voxelData.voxelSize);
     }
   };
   
@@ -1071,7 +1083,7 @@ const ThreeDHome = () => {
       
       // Update the visualization in all viewports
       if (voxelData) {
-        visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
+        visualizeVoxels(voxelData.voxels, voxelData.supportVoxels, voxelData.voxelSize);
       }
     }
   };
@@ -1084,7 +1096,7 @@ const ThreeDHome = () => {
       
       // Update the visualization in all viewports
       if (voxelData) {
-        visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
+        visualizeVoxels(voxelData.voxels, voxelData.supportVoxels, voxelData.voxelSize);
       }
     }
   };
@@ -1093,25 +1105,65 @@ const ThreeDHome = () => {
   const resetView = () => {
     // Set camera to a good position for viewing the model
     if (originalControlsRef.current) {
-      // Position the camera at a 45-degree angle for a good view of the buildplate and model
-      originalCameraRef.current.position.set(12, 12, 12);
+      // Calculate appropriate camera distance based on model dimensions
+      // First get a reference to the model if it exists
+      let modelGroup = null;
+      if (originalSceneRef.current) {
+        modelGroup = originalSceneRef.current.getObjectByName('modelGroup');
+      }
       
-      // Look at a point slightly above the buildplate for a better view
-      originalControlsRef.current.target.set(0, 4, 0);
+      // Position the camera at a 45-degree angle for a good view of the buildplate and model
+      let cameraDistance = 16;
+      let targetHeight = 4;
+      
+      // If we have a model, adjust based on its size
+      if (modelGroup) {
+        const boundingBox = new THREE.Box3().setFromObject(modelGroup);
+        const modelSize = new THREE.Vector3();
+        boundingBox.getSize(modelSize);
+        
+        // Use the largest dimension to determine camera distance
+        const maxDimension = Math.max(modelSize.x, modelSize.y, modelSize.z);
+        cameraDistance = Math.max(maxDimension * 2, 16);
+        
+        // Set the target point at about half the model's height
+        targetHeight = Math.max(modelSize.y / 2, 2);
+      }
+      
+      // Position the camera at 45-degree angle using the calculated distance
+      originalCameraRef.current.position.set(cameraDistance, cameraDistance, cameraDistance);
+      
+      // Look at a point at the center of the buildplate, adjusted for model height
+      originalControlsRef.current.target.set(0, targetHeight, 0);
       originalControlsRef.current.update();
     }
     
-    // Sync the other cameras to match the first viewport
-    if (voxelControlsRef.current) {
+    // Sync the other cameras to match the first viewport EXACTLY
+    if (voxelControlsRef.current && originalCameraRef.current) {
       voxelCameraRef.current.position.copy(originalCameraRef.current.position);
+      voxelCameraRef.current.rotation.copy(originalCameraRef.current.rotation);
       voxelControlsRef.current.target.copy(originalControlsRef.current.target);
       voxelControlsRef.current.update();
     }
     
-    if (legoControlsRef.current) {
+    if (legoControlsRef.current && originalCameraRef.current) {
       legoCameraRef.current.position.copy(originalCameraRef.current.position);
+      legoCameraRef.current.rotation.copy(originalCameraRef.current.rotation);
       legoControlsRef.current.target.copy(originalControlsRef.current.target);
       legoControlsRef.current.update();
+    }
+    
+    // Force a render update for all scenes
+    if (originalRendererRef.current && originalSceneRef.current && originalCameraRef.current) {
+      originalRendererRef.current.render(originalSceneRef.current, originalCameraRef.current);
+    }
+    
+    if (voxelRendererRef.current && voxelSceneRef.current && voxelCameraRef.current) {
+      voxelRendererRef.current.render(voxelSceneRef.current, voxelCameraRef.current);
+    }
+    
+    if (legoRendererRef.current && legoSceneRef.current && legoCameraRef.current) {
+      legoRendererRef.current.render(legoSceneRef.current, legoCameraRef.current);
     }
   };
   
@@ -1217,7 +1269,7 @@ const ThreeDHome = () => {
   // Handle color change and update visualization
   useEffect(() => {
     if (voxelData) {
-      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
+      visualizeVoxels(voxelData.voxels, voxelData.supportVoxels, voxelData.voxelSize);
     }
   }, [modelColor, supportColor, voxelData]);
   
