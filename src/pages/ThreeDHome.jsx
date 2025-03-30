@@ -462,77 +462,6 @@ const ThreeDHome = () => {
     });
   };
 
-  // Helper to orient the model correctly (make it stand upright)
-  const orientModelUpright = (mesh) => {
-    console.log("Starting model orientation process");
-    
-    // STEP 1: First, reset the mesh to a known state
-    mesh.position.set(0, 0, 0);
-    mesh.rotation.set(0, 0, 0);
-    mesh.updateMatrix();
-    mesh.geometry.applyMatrix4(mesh.matrix);
-    mesh.matrix.identity();
-    
-    // STEP 2: Get the current bounding box to analyze dimensions
-    const bbox = new THREE.Box3().setFromObject(mesh);
-    const size = new THREE.Vector3();
-    bbox.getSize(size);
-    
-    console.log("Original dimensions:", size);
-    
-    // STEP 3: Always make the Y-axis the height by default
-    // Force rotation around X-axis by 90 degrees to ensure the model stands upright
-    // This is a reliable approach based on the Python implementation
-    const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
-    mesh.geometry.applyMatrix4(rotationMatrix);
-    
-    // Reset mesh transforms after applying the rotation to geometry
-    mesh.position.set(0, 0, 0);
-    mesh.rotation.set(0, 0, 0);
-    mesh.updateMatrix();
-    
-    // STEP 4: Verify the new dimensions
-    const newBbox = new THREE.Box3().setFromObject(mesh);
-    const newSize = new THREE.Vector3();
-    newBbox.getSize(newSize);
-    console.log("After rotation dimensions:", newSize);
-    
-    // STEP 5: Ensure the y-dimension is properly upright by checking
-    // if we need to flip it another 90 degrees around Z-axis
-    if (newSize.x > newSize.y && newSize.x > newSize.z) {
-      console.log("Additional rotation needed - X axis is still dominant");
-      const additionalRotation = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-      mesh.geometry.applyMatrix4(additionalRotation);
-      
-      // Reset mesh transforms after applying the rotation to geometry
-      mesh.position.set(0, 0, 0);
-      mesh.rotation.set(0, 0, 0);
-      mesh.updateMatrix();
-      
-      const finalBbox = new THREE.Box3().setFromObject(mesh);
-      const finalSize = new THREE.Vector3();
-      finalBbox.getSize(finalSize);
-      console.log("Final dimensions after correction:", finalSize);
-    }
-    
-    // STEP 6: Final position correction - ensure bottom is at Y=0
-    // and model is centered on X and Z axes
-    const finalBbox = new THREE.Box3().setFromObject(mesh);
-    
-    // Center the model on X and Z axes and ensure it sits on Y=0
-    const correction = new THREE.Vector3();
-    finalBbox.getCenter(correction);
-    correction.y = finalBbox.min.y; // We want to translate up by the minimum Y value
-    
-    mesh.geometry.translate(-correction.x, -correction.y, -correction.z);
-    mesh.position.set(0, 0, 0);
-    mesh.updateMatrix();
-    
-    console.log("Model orientation complete");
-    
-    return mesh;
-  };
-
   // Process STL file
   const processSTLFile = (fileData) => {
     setIsProcessing(true);
@@ -628,64 +557,67 @@ const ThreeDHome = () => {
       
       const originalMesh = new THREE.Mesh(geometry, originalMaterial);
       
-      // STEP 1: Reset model position and scale to start fresh
-      originalMesh.position.set(0, 0, 0); 
+      // STEP 1: Reset mesh
+      originalMesh.position.set(0, 0, 0);
       originalMesh.scale.set(1, 1, 1);
       originalMesh.rotation.set(0, 0, 0);
       originalMesh.updateMatrix();
       
-      // STEP 2: Orient the model to stand upright
-      orientModelUpright(originalMesh);
+      // STEP 2: Following Python implementation: Apply important default orientation
+      // Standard rotation for STL models to ensure Y is up (similar to trimesh orientation)
+      // This consistent 90-degree X-axis rotation aligns coordinate systems
+      const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+      originalMesh.geometry.applyMatrix4(rotationMatrix);
+      originalMesh.updateMatrix();
       
-      // STEP 3: Recalculate the bounding box after orientation
-      const orientedBox = new THREE.Box3().setFromObject(originalMesh);
-      const orientedSize = new THREE.Vector3();
-      orientedBox.getSize(orientedSize);
+      // STEP 3: Get the bounding box to determine size and position
+      const boundingBox = new THREE.Box3().setFromObject(originalMesh);
+      const size = new THREE.Vector3();
+      boundingBox.getSize(size);
+      console.log("Model dimensions:", size);
       
-      // STEP 4: Determine the scaling factor to fit the model within our grid
-      // We want to leave some margin on all sides of the grid
-      const maxDimension = Math.max(orientedSize.x, orientedSize.z);
-      const targetGridSize = 14; // 14 units out of 16 to leave a margin
-      const scaleFactor = targetGridSize / maxDimension * scale;
-      
-      console.log("Applying scale factor:", scaleFactor);
+      // STEP 4: Apply scale
+      const scaleFactor = scale; // Use the current scale value from state
       originalMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
       
-      // STEP 5: After scaling, recalculate the bounding box and center
+      // STEP 5: Update the bounding box after scaling
       const scaledBox = new THREE.Box3().setFromObject(originalMesh);
       const scaledSize = new THREE.Vector3();
       scaledBox.getSize(scaledSize);
       console.log("Scaled dimensions:", scaledSize);
       
-      // STEP 6: CRITICAL - Position the model so its bottom sits exactly on the grid (Y=0)
-      // and it's centered in the XZ plane
-      const offset = new THREE.Vector3();
-      scaledBox.getCenter(offset);
+      // STEP 6: MOST IMPORTANT: Position the mesh properly
+      // Get centroid of the bounding box for centering
+      const centroid = new THREE.Vector3();
+      scaledBox.getCenter(centroid);
       
+      // Python approach: Apply transformations to place on buildplate
+      // 1. Center in X and Z (equivalent to Python's X and Y centering)
+      // 2. Move bottom to Y=0 (equivalent to Python's ensuring min_z at buildplate)
       originalMesh.position.set(
-        -offset.x,                 // Center on X
-        -scaledBox.min.y,          // Bottom at Y=0
-        -offset.z                  // Center on Z
+        -centroid.x,             // Center on X axis
+        -scaledBox.min.y,        // Bottom at Y=0
+        -centroid.z              // Center on Z axis
       );
+      originalMesh.updateMatrix();
       
-      console.log("Final position:", originalMesh.position);
-      
-      // STEP 7: Create a group for the model and add it to the scene
+      // STEP 7: Create and add model group to scene
       const originalModelGroup = new THREE.Group();
       originalModelGroup.name = 'modelGroup';
       originalModelGroup.add(originalMesh);
       originalSceneRef.current.add(originalModelGroup);
       
-      // Add debug visualization to see the bounding box
+      // Add debug visualization to help verify positioning
       addDebugVisualization(originalModelGroup, originalSceneRef.current);
       
+      // Small delay to prevent UI freezing
       setTimeout(() => {
         updateProgressWithInfo(3);
         
-        // Create a mesh for voxelization that maintains the same position and scale
+        // Create voxelization mesh - clone to avoid modifying original
         const voxelizationMesh = originalMesh.clone();
         
-        // Voxelize the model using our utility - clone to avoid modifying original
+        // Voxelize the model
         const voxelResult = voxelizeMesh(voxelizationMesh, 16, 16, scaleFactor);
         setVoxelData(voxelResult);
         setModelStats(voxelResult.stats);
@@ -693,10 +625,11 @@ const ThreeDHome = () => {
         // Set the maximum layer for layer view mode
         setMaxLayer(voxelResult.voxels.length - 1);
         
+        // Update both remaining viewports consistently
         setTimeout(() => {
           updateProgressWithInfo(4);
           
-          // Visualize voxels in the other two viewports
+          // Visualize voxels in both voxel and LEGO viewports
           visualizeVoxels(voxelResult.voxels, voxelResult.supportVoxels);
           
           // Set camera positions to ensure the model is visible in all viewports
@@ -709,8 +642,8 @@ const ThreeDHome = () => {
             updateProgressWithInfo(6);
             setIsProcessing(false);
           }, 500);
-        }, 100); // Small delay to prevent UI freezing
-      }, 100); // Small delay to prevent UI freezing
+        }, 100);
+      }, 100);
     } catch (error) {
       console.error('Error processing STL file:', error);
       setError('Error processing STL file: ' + error.message);
@@ -722,6 +655,20 @@ const ThreeDHome = () => {
           fileData.byteLength > 10000000) { // Show for files larger than 10MB
         setShowPerformanceTips(true);
       }
+    }
+  };
+  
+  // Apply scale changes - following Python approach
+  const applyScale = () => {
+    if (modelFile) {
+      console.log("Applying scale factor:", scale);
+      setProcessingMessage("Updating model with new scale...");
+      setIsProcessing(true);
+      setProgress(10);
+      
+      // Direct approach: completely reprocess the STL file with the new scale
+      // This ensures all viewports are consistently updated
+      processSTLFile(modelFile);
     }
   };
   
@@ -1139,22 +1086,6 @@ const ThreeDHome = () => {
       if (voxelData) {
         visualizeVoxels(voxelData.voxels, voxelData.supportVoxels);
       }
-    }
-  };
-  
-  // Apply scale changes
-  const applyScale = () => {
-    if (modelFile) {
-      console.log("Applying scale factor:", scale);
-      setProcessingMessage("Updating model with new scale...");
-      setIsProcessing(true);
-      setProgress(10);
-      
-      // Short delay to allow UI to update before reprocessing the STL file
-      setTimeout(() => {
-        // Reprocess the STL file with the new scale
-        processSTLFile(modelFile);
-      }, 100);
     }
   };
   

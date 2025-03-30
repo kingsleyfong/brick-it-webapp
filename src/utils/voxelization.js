@@ -172,44 +172,81 @@ export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, modelScale = 1
   }
   
   // Second pass: Create support columns
-  // For each x,z position, check if there are any model voxels above ground level
-  // and create a continuous support column from the lowest model voxel down to the ground
+  // For each x,z position, identify if there are any model voxels in the column
+  // Create a continuous support column from the lowest model voxel down to the ground
   for (let x = 0; x < gridSize; x++) {
     for (let z = 0; z < gridSize; z++) {
-      // Find the lowest model voxel in this column
-      let lowestModelY = -1;
-      
-      // Scan from bottom to top to find the first model voxel
-      for (let y = 0; y < maxHeight; y++) {
+      // Find the highest model voxel in this column (from top down)
+      let highestModelY = -1;
+      for (let y = maxHeight - 1; y >= 0; y--) {
         if (grid[y][x][z] === 1) {
-          lowestModelY = y;
+          highestModelY = y;
           break;
         }
       }
       
-      // If we found a model voxel and it's not at ground level (y=0)
-      if (lowestModelY > 0) {
-        // Create support voxels from ground up to the lowest model voxel
-        for (let y = 0; y < lowestModelY; y++) {
-          supportGrid[y][x][z] = 1;
-          totalSupportVoxels++;
-        }
-      }
-      
-      // Check for floating sections (model voxels with empty spaces below them)
-      let inModelVoxel = false;
-      for (let y = maxHeight - 1; y >= 0; y--) {
-        if (grid[y][x][z] === 1) {
-          inModelVoxel = true;
-        } else if (inModelVoxel) {
-          // We found an empty space below a model voxel
-          // Add a support voxel here
-          supportGrid[y][x][z] = 1;
-          totalSupportVoxels++;
+      // If we found a model voxel in this column
+      if (highestModelY >= 0) {
+        // Now scan from bottom up to find all gaps that need support
+        let inSupportRegion = true; // Start assuming we need support (at ground level)
+        
+        for (let y = 0; y <= highestModelY; y++) {
+          if (grid[y][x][z] === 1) {
+            // We found a model voxel - we don't need support at this exact position
+            inSupportRegion = false;
+          } else if (inSupportRegion) {
+            // This is a gap below a model voxel or the bottom of the column
+            // Add a support voxel
+            supportGrid[y][x][z] = 1;
+            totalSupportVoxels++;
+          } else {
+            // We found a gap above a model voxel - this means we need
+            // to start a new support region from here up to the next model voxel
+            inSupportRegion = true;
+            supportGrid[y][x][z] = 1;
+            totalSupportVoxels++;
+          }
         }
       }
     }
   }
+  
+  // Third pass: Connect all disconnected floating support regions
+  // Ensure every support voxel has support underneath it
+  let supportAdded;
+  do {
+    supportAdded = false;
+    
+    // Check each column from bottom to top
+    for (let x = 0; x < gridSize; x++) {
+      for (let z = 0; z < gridSize; z++) {
+        let hasSupport = false; // Track if we have support at Y=0
+        
+        // For each column, start at ground level
+        if (supportGrid[0][x][z] === 1 || grid[0][x][z] === 1) {
+          hasSupport = true; // Either support or model voxel at ground level
+        }
+        
+        // Check each voxel in the column
+        for (let y = 1; y < maxHeight; y++) {
+          // If we have a support or model voxel at this level
+          if (supportGrid[y][x][z] === 1 || grid[y][x][z] === 1) {
+            // But there's no support below it
+            if (!hasSupport) {
+              // Add support voxel below
+              supportGrid[y-1][x][z] = 1;
+              totalSupportVoxels++;
+              supportAdded = true;
+            }
+            
+            hasSupport = true; // We now have support at this level
+          } else {
+            hasSupport = false; // No support at this level
+          }
+        }
+      }
+    }
+  } while (supportAdded); // Continue until no more support voxels are added
   
   console.log("Support structure generated:", totalSupportVoxels, "support voxels");
   console.timeEnd('voxelization');
