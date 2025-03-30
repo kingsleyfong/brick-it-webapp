@@ -13,9 +13,10 @@ import * as THREE from 'three';
  * @param {THREE.Mesh} mesh - The mesh to voxelize
  * @param {number} gridSize - The size of the voxel grid (default: 16)
  * @param {number} maxHeight - Maximum height of voxels (default: 10)
+ * @param {number} modelScale - Scale factor applied to the original model (for consistent voxelization)
  * @returns {Object} An object containing the voxel data and support structure
  */
-export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
+export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10, modelScale = 1.0) => {
   // Clone the mesh to avoid modifying the original
   const clonedMesh = mesh.clone();
   
@@ -25,27 +26,21 @@ export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
   const center = new THREE.Vector3();
   box.getCenter(center);
   
-  // Center the mesh at origin for easier voxelization
-  clonedMesh.position.sub(center);
+  // Calculate the proper position offset to center in the grid
+  // With the LEGO grid centered at 0, we want the model centered at 0 as well
+  const halfGridSize = gridSize / 2;
   
-  // Update the bounding box after centering
-  const centeredBox = new THREE.Box3().setFromObject(clonedMesh);
-  const centeredSize = centeredBox.getSize(new THREE.Vector3());
+  // Voxel positions in the grid (0-15 for a 16x16 grid)
+  // need to be properly centered at the origin
   
-  // Create a raycaster for voxel detection
-  const raycaster = new THREE.Raycaster();
+  // Calculate voxel size based on the grid dimensions
+  // The grid spans from -8 to 8 (for a 16x16 grid), which is 16 units
+  // To convert model coordinates to voxel coordinates, we need to map sizes
+  const gridWorldSize = 16; // Size of the grid in world units (aligned with model size)
+  const voxelSize = gridWorldSize / gridSize;
   
-  // Initialize voxel grid (filled with false)
-  const voxels = Array(gridSize).fill().map(() => 
-    Array(gridSize).fill().map(() => 
-      Array(maxHeight).fill(false)
-    )
-  );
-  
-  // Calculate voxel size based on the largest dimension
-  const maxDim = Math.max(centeredSize.x, centeredSize.z);
-  const voxelSize = maxDim / gridSize;
-  const heightScale = centeredSize.y / (voxelSize * maxHeight);
+  // Adjust the height scale based on the model's height and voxel grid
+  const heightScale = Math.min(1.0, (maxHeight * voxelSize) / (size.y * modelScale));
   
   // Use multiple ray directions for better filling
   const rayDirections = [
@@ -57,6 +52,16 @@ export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
     new THREE.Vector3(0, 0, -1)    // Back to front
   ];
   
+  // Create a raycaster for voxel detection
+  const raycaster = new THREE.Raycaster();
+  
+  // Initialize voxel grid (filled with false)
+  const voxels = Array(gridSize).fill().map(() => 
+    Array(gridSize).fill().map(() => 
+      Array(maxHeight).fill(false)
+    )
+  );
+  
   // First pass: create a voxel representation from multiple directions
   for (let rayIndex = 0; rayIndex < rayDirections.length; rayIndex++) {
     const rayDirection = rayDirections[rayIndex];
@@ -65,16 +70,16 @@ export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
     // Determine ray origin position based on direction
     let rayOriginBaseX, rayOriginBaseY, rayOriginBaseZ;
     
-    if (rayDirection.x < 0) rayOriginBaseX = centeredBox.max.x + 1;
-    else if (rayDirection.x > 0) rayOriginBaseX = centeredBox.min.x - 1;
+    if (rayDirection.x < 0) rayOriginBaseX = box.max.x + 1;
+    else if (rayDirection.x > 0) rayOriginBaseX = box.min.x - 1;
     else rayOriginBaseX = 0;
     
-    if (rayDirection.y < 0) rayOriginBaseY = centeredBox.max.y + 1;
-    else if (rayDirection.y > 0) rayOriginBaseY = centeredBox.min.y - 1;
+    if (rayDirection.y < 0) rayOriginBaseY = box.max.y + 1;
+    else if (rayDirection.y > 0) rayOriginBaseY = box.min.y - 1;
     else rayOriginBaseY = 0;
     
-    if (rayDirection.z < 0) rayOriginBaseZ = centeredBox.max.z + 1;
-    else if (rayDirection.z > 0) rayOriginBaseZ = centeredBox.min.z - 1;
+    if (rayDirection.z < 0) rayOriginBaseZ = box.max.z + 1;
+    else if (rayDirection.z > 0) rayOriginBaseZ = box.min.z - 1;
     else rayOriginBaseZ = 0;
     
     // Cast rays for each grid position
@@ -84,9 +89,9 @@ export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
         if (!isVertical) {
           for (let y = 0; y < maxHeight; y++) {
             // Calculate the position in 3D space
-            const xPos = (x - gridSize / 2) * voxelSize + voxelSize / 2;
+            const xPos = (x - halfGridSize) * voxelSize + voxelSize / 2;
             const yPos = y * voxelSize * heightScale + voxelSize * heightScale / 2;
-            const zPos = (z - gridSize / 2) * voxelSize + voxelSize / 2;
+            const zPos = (z - halfGridSize) * voxelSize + voxelSize / 2;
             
             // Create ray origin based on direction and position
             const rayOrigin = new THREE.Vector3(
@@ -107,13 +112,13 @@ export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
           }
         } else { // For vertical rays (primary approach)
           // Calculate the position in 3D space for X and Z
-          const xPos = (x - gridSize / 2) * voxelSize + voxelSize / 2;
-          const zPos = (z - gridSize / 2) * voxelSize + voxelSize / 2;
+          const xPos = (x - halfGridSize) * voxelSize + voxelSize / 2;
+          const zPos = (z - halfGridSize) * voxelSize + voxelSize / 2;
           
           // Create ray origin 
           const rayOrigin = new THREE.Vector3(
             xPos,
-            rayDirection.y < 0 ? centeredBox.max.y + 1 : centeredBox.min.y - 1,
+            rayDirection.y < 0 ? box.max.y + 1 : box.min.y - 1,
             zPos
           );
           
@@ -138,7 +143,7 @@ export const voxelizeMesh = (mesh, gridSize = 16, maxHeight = 10) => {
             insideMesh = !insideMesh;
             
             // Calculate voxel height
-            const relativeHeight = yPos - centeredBox.min.y;
+            const relativeHeight = yPos - box.min.y;
             const voxelHeight = Math.floor(relativeHeight / (voxelSize * heightScale));
             
             if (voxelHeight >= 0 && voxelHeight < maxHeight) {
