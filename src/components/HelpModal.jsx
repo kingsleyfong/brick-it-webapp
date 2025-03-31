@@ -110,7 +110,7 @@ const HelpModal = ({ onClose }) => {
           
           <h3>Credits</h3>
           <p>
-            Brick It was created by Kingsley Fong at the University of Washington.
+            Brick It was created by <a href="https://www.linkedin.com/in/kingsley-fong/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Kingsley Fong</a> at the University of Waterloo. Mechanical Engineer.
           </p>
           <p>
             LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this web app.

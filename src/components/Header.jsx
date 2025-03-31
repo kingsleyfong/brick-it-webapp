@@ -9,13 +9,13 @@ const Header = () => {
   const location = useLocation();
 
   return (
-    <header className="bg-red-600 text-white shadow-md">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+    <header className="bg-red-600 text-white shadow-md relative">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-center">
         <Link to="/" className="text-2xl font-bold flex items-center">
           <span className="mr-2">🧱</span> Brick It
         </Link>
         
-        <div className="flex space-x-4">
+        <div className="flex space-x-4 absolute right-4">
           {/* Only show navigation when not on home page */}
           {location.pathname !== '/' && (
             <>

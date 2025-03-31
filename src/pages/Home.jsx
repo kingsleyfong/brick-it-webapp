@@ -21,7 +21,16 @@ const Home = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 relative">
+      {/* Background Image */}
+      <div className="absolute inset-0 -z-10">
+        <img 
+          src="/scrapbook.png" 
+          alt="Background" 
+          className="w-full h-full object-cover opacity-20" 
+        />
+      </div>
+
       {/* First-time user welcome message */}
       {isFirstVisit && (
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 relative">
@@ -56,7 +65,7 @@ const Home = () => {
         {/* Mosaic Mode Card */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="h-48 bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center">
-            <span className="text-6xl">🎨</span>
+            <img src="/mosaic.png" alt="Mosaic Mode" className="h-full w-full object-cover" />
           </div>
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-2">Mosaic Mode</h2>
@@ -76,7 +85,7 @@ const Home = () => {
         {/* 3D Model Mode Card */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="h-48 bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center">
-            <span className="text-6xl">🧊</span>
+            <img src="/3dModel.png" alt="3D Model Mode" className="h-full w-full object-cover" />
           </div>
           <div className="p-6">
             <h2 className="text-2xl font-bold mb-2">3D Model Mode</h2>
@@ -109,7 +118,7 @@ const Home = () => {
       
       <div className="mt-12 text-center text-sm text-gray-500">
         <p>LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this web app.</p>
-        <p>Built by Kingsley Fong at the University of Washington.</p>
+        <p>Built by <a href="https://www.linkedin.com/in/kingsley-fong/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Kingsley Fong</a> at the University of Waterloo. Mechanical Engineer.</p>
       </div>
     </div>
   );
