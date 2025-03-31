@@ -115,11 +115,6 @@ const Home = () => {
           Access your recent projects, settings, and app statistics
         </p>
       </div>
-      
-      <div className="mt-12 text-center text-sm text-gray-500">
-        <p>LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this web app.</p>
-        <p>Built by <a href="https://www.linkedin.com/in/kingsley-fong/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Kingsley Fong</a> at the University of Waterloo. Mechanical Engineer.</p>
-      </div>
     </div>
   );
 };
