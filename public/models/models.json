@@ -1,0 +1,45 @@
+{
+  "models": {
+    "default": "Xenova/minisd-lego-diffusers",
+    "alternatives": [
+      {
+        "id": "Xenova/sd-turbo-quantized",
+        "name": "Stable Diffusion Turbo (Quantized)",
+        "description": "Smaller model, faster generation, lower quality"
+      },
+      {
+        "id": "Xenova/sdxl-turbo-small",
+        "name": "SDXL Turbo (Small)",
+        "description": "High quality general purpose model"
+      },
+      {
+        "id": "Xenova/minisd-lego-diffusers",
+        "name": "LEGO Mini Diffusion",
+        "description": "Specialized for LEGO content generation"
+      },
+      {
+        "id": "prompthero/openjourney-v4",
+        "name": "OpenJourney v4",
+        "description": "Great for realistic LEGO style renders"
+      }
+    ],
+    "legoPromptTemplates": {
+      "minifigure": "8k professional photo of a LEGO minifigure {prompt}, studio lighting, highly detailed LEGO bricks, toy photography, {extras}, against plain background, product photography, ultra realistic",
+      "astronaut": "8k professional photo of a LEGO minifigure astronaut with space helmet, oxygen tank, {prompt}, LEGO space suit, highly detailed LEGO bricks, toy photography, against plain background, product photography, ultra realistic",
+      "scene": "8k professional photography of a LEGO {prompt} scene, highly detailed LEGO bricks, toy photography, studio lighting, macro lens",
+      "object": "A LEGO model of {prompt}, clear product photography, made of plastic LEGO bricks, highly detailed, studio lighting"
+    }
+  },
+  "inferenceModes": [
+    {
+      "name": "Normal",
+      "steps": 25,
+      "guidanceScale": 7.5
+    },
+    {
+      "name": "Fast",
+      "steps": 10,
+      "guidanceScale": 5.5
+    }
+  ]
+} 

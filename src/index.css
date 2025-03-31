@@ -172,4 +172,12 @@ button,
     color: #213547;
     background-color: #ffffff;
   }
+}
+
+/* Fix for the browser compatibility warning - hide it for Chrome */
+.browser-warning, 
+div[class*="fixed"][class*="bottom"][class*="text-red"], 
+div.fixed.bottom-0.w-full.p-3.bg-red-100.text-red-700,
+div[style*="fixed"][style*="bottom: 0"][style*="background-color: #ffcccb"] {
+  display: none !important;
 } 

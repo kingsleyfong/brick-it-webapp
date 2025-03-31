@@ -208,7 +208,7 @@ const PreviewPanel = () => {
       const generateTxtContent = () => {
         return new Promise((resolve, reject) => {
           try {
-            let txtContent = '';
+            let coordinates = [];
             
             // Create a canvas to read the LEGO image pixel data
             const image = new Image();
@@ -228,7 +228,7 @@ const PreviewPanel = () => {
               const pixelData = ctx.getImageData(0, 0, 16, 16);
               const { data } = pixelData;
               
-              // Generate TXT content
+              // Collect all coordinates in an array first
               for (let y = 0; y < 16; y++) {
                 for (let x = 0; x < 16; x++) {
                   const i = (y * 16 + x) * 4;
@@ -254,11 +254,28 @@ const PreviewPanel = () => {
                     }
                   });
                   
-                  // Add to TXT content (x, y, z, color_index)
+                  // Store coordinates and color (x, y, z, color_index)
                   // z is always 1 for mosaic
-                  txtContent += `${x + 1} ${y + 1} 1 ${closestColorDispenser}\n`;
+                  coordinates.push({
+                    x: x + 1,
+                    y: y + 1,
+                    z: 1,
+                    color: closestColorDispenser
+                  });
                 }
               }
+              
+              // Sort coordinates: first by z, then by x, then by y
+              coordinates.sort((a, b) => {
+                if (a.z !== b.z) return a.z - b.z;
+                if (a.x !== b.x) return a.x - b.x;
+                return a.y - b.y;
+              });
+              
+              // Generate TXT content from sorted coordinates
+              let txtContent = coordinates.map(coord => 
+                `${coord.x} ${coord.y} ${coord.z} ${coord.color}`
+              ).join('\n');
               
               resolve(txtContent);
             };

@@ -113,18 +113,16 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
+    
+    // Set standard positions for voxel and LEGO viewport cameras
     // Position camera to view models from front and slightly above
     // This ensures models appear upright
-    originalCamera.position.set(15, 12, 15);
-    originalCamera.lookAt(0, 5, 0);
-    
     const voxelCamera = new THREE.PerspectiveCamera(
       75,
       voxelAspect,
       0.1,
       1000
     );
-    // Match the camera position across all viewports
     voxelCamera.position.set(15, 12, 15);
     voxelCamera.lookAt(0, 5, 0);
     
@@ -134,9 +132,13 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    // Match the camera position across all viewports
     legoCamera.position.set(15, 12, 15);
     legoCamera.lookAt(0, 5, 0);
+    
+    // For the original viewport, mirror the X position to account for the CSS transform
+    // This ensures consistent rotation behavior across all viewports
+    originalCamera.position.set(-15, 12, 15);
+    originalCamera.lookAt(0, 5, 0);
     
     // Create renderers for each viewport
     const originalRenderer = new THREE.WebGLRenderer({ antialias: true });
@@ -192,12 +194,28 @@ const ThreeDHome = () => {
       
       syncingControls = true;
       
-      // Copy position and rotation exactly
-      targetCamera.position.copy(sourceCamera.position);
+      // Check if we're syncing between the original viewport and others
+      const isOriginalToOthers = sourceCamera === originalCamera && (targetCamera === voxelCamera || targetCamera === legoCamera);
+      const isOthersToOriginal = (sourceCamera === voxelCamera || sourceCamera === legoCamera) && targetCamera === originalCamera;
+      
+      // Create new vectors to avoid modifying the original ones
+      const newPosition = new THREE.Vector3().copy(sourceCamera.position);
+      const newTarget = new THREE.Vector3().copy(sourceControls.target);
+      
+      // If syncing between original and other viewports, invert the X coordinates
+      // This corrects for the rotateY(180deg) CSS transform on the original viewport
+      if (isOriginalToOthers || isOthersToOriginal) {
+        // Invert X component to correct rotation direction
+        newPosition.x = -newPosition.x;
+        newTarget.x = -newTarget.x;
+      }
+      
+      // Apply the new position and rotation
+      targetCamera.position.copy(newPosition);
       targetCamera.rotation.copy(sourceCamera.rotation);
       
-      // Update controls target to match exactly
-      targetControls.target.copy(sourceControls.target);
+      // Update controls target
+      targetControls.target.copy(newTarget);
       
       // Ensure controls are updated
       targetControls.update();
@@ -1161,11 +1179,22 @@ const ThreeDHome = () => {
         targetHeight = Math.max(modelSize.y / 2, 5);
       }
       
-      // Position the camera to look at the model from slightly above and in front
-      // For the original STL model viewport, we mirror the X position to compensate for the CSS transform
-      originalCameraRef.current.position.set(-cameraDistance, cameraDistance * 0.8, cameraDistance);
+      // Set standard camera positions for voxel and LEGO viewports
+      if (voxelCameraRef.current) {
+        voxelCameraRef.current.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
+        voxelControlsRef.current.target.set(0, targetHeight, 0);
+        voxelControlsRef.current.update();
+      }
       
-      // Look at a point at the center of the buildplate, adjusted for model height
+      if (legoCameraRef.current) {
+        legoCameraRef.current.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
+        legoControlsRef.current.target.set(0, targetHeight, 0);
+        legoControlsRef.current.update();
+      }
+      
+      // For the original STL model viewport, we mirror the X position to compensate for the CSS transform
+      // This ensures the original view matches the others but with correct rotation behavior
+      originalCameraRef.current.position.set(-cameraDistance, cameraDistance * 0.8, cameraDistance);
       originalControlsRef.current.target.set(0, targetHeight, 0);
       originalControlsRef.current.update();
       
@@ -1181,19 +1210,6 @@ const ThreeDHome = () => {
         y: originalControlsRef.current.target.y.toFixed(2),
         z: originalControlsRef.current.target.z.toFixed(2)
       });
-      
-      // Set standard camera positions for voxel and LEGO viewports (without mirroring)
-      if (voxelCameraRef.current) {
-        voxelCameraRef.current.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
-        voxelControlsRef.current.target.set(0, targetHeight, 0);
-        voxelControlsRef.current.update();
-      }
-      
-      if (legoCameraRef.current) {
-        legoCameraRef.current.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
-        legoControlsRef.current.target.set(0, targetHeight, 0);
-        legoControlsRef.current.update();
-      }
     }
     
     // Force a render update for all scenes

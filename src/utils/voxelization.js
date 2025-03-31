@@ -291,7 +291,7 @@ export function voxelizeMesh(mesh, gridSize = 16, maxHeight = 16, fixedVoxelSize
  * @returns {string} Text content for the LEGO printer
  */
 export const generateTxtFileContent = (voxels, supportVoxels, colorConfig, modelColor, supportColor) => {
-  let txtContent = '';
+  const coordinates = [];
   
   const modelColorDispenser = colorConfig[modelColor]?.dispenser || 1;
   const supportColorDispenser = colorConfig[supportColor]?.dispenser || 7;
@@ -301,8 +301,13 @@ export const generateTxtFileContent = (voxels, supportVoxels, colorConfig, model
     for (let x = 0; x < voxels[y].length; x++) {
       for (let z = 0; z < voxels[y][x].length; z++) {
         if (voxels[y][x][z]) {
-          // Add to TXT content (x, y, z, color_index)
-          txtContent += `${x + 1} ${z + 1} ${y + 1} ${modelColorDispenser}\n`;
+          // Store coordinates and color
+          coordinates.push({
+            x: x + 1,
+            y: z + 1,
+            z: y + 1,
+            color: modelColorDispenser
+          });
         }
       }
     }
@@ -313,15 +318,32 @@ export const generateTxtFileContent = (voxels, supportVoxels, colorConfig, model
     for (let x = 0; x < supportVoxels[y].length; x++) {
       for (let z = 0; z < supportVoxels[y][x].length; z++) {
         if (supportVoxels[y][x][z] && !voxels[y][x][z]) {
-          // Add to TXT content (x, y, z, color_index)
-          txtContent += `${x + 1} ${z + 1} ${y + 1} ${supportColorDispenser}\n`;
+          // Store coordinates and color
+          coordinates.push({
+            x: x + 1,
+            y: z + 1,
+            z: y + 1,
+            color: supportColorDispenser
+          });
         }
       }
     }
   }
   
+  // Sort coordinates: first by z, then by x, then by y
+  coordinates.sort((a, b) => {
+    if (a.z !== b.z) return a.z - b.z;
+    if (a.x !== b.x) return a.x - b.x;
+    return a.y - b.y;
+  });
+  
+  // Generate TXT content from sorted coordinates
+  let txtContent = coordinates.map(coord => 
+    `${coord.x} ${coord.y} ${coord.z} ${coord.color}`
+  ).join('\n');
+  
   // Add -1 at the end of the file to indicate the end for the LEGO EV3
-  txtContent += '-1';
+  txtContent += '\n-1';
   
   return txtContent;
 }; 
