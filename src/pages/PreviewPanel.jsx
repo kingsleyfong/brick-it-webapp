@@ -276,6 +276,9 @@ const PreviewPanel = () => {
       // Execute both operations in parallel
       Promise.all([generateHighQualityThumbnail(), generateTxtContent()])
         .then(([thumbnailDataUrl, txtContent]) => {
+          // Add -1 at the end of the TXT content for LEGO EV3 printer
+          txtContent = txtContent + '-1';
+          
           // Create a download link for the TXT file
           const blob = new Blob([txtContent], { type: 'text/plain' });
           const downloadUrl = URL.createObjectURL(blob);

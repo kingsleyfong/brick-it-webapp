@@ -320,5 +320,8 @@ export const generateTxtFileContent = (voxels, supportVoxels, colorConfig, model
     }
   }
   
+  // Add -1 at the end of the file to indicate the end for the LEGO EV3
+  txtContent += '-1';
+  
   return txtContent;
 }; 

@@ -76,6 +76,12 @@ const ThreeDHome = () => {
   useEffect(() => {
     if (!originalModelRef.current || !voxelModelRef.current || !legoModelRef.current) return;
     
+    // FIX: Apply CSS transformation to the original STL viewport
+    // This fixes the rotation mismatch by rotating the entire canvas, not the model
+    if (originalModelRef.current) {
+      originalModelRef.current.style.transform = 'rotateY(180deg)';
+    }
+    
     // Get the container dimensions for proper sizing
     const containerWidth = originalModelRef.current.parentElement.clientWidth;
     const containerHeight = originalModelRef.current.clientHeight;
@@ -107,8 +113,10 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    originalCamera.position.set(12, 10, 12);
-    originalCamera.lookAt(0, 2, 0);
+    // Position camera to view models from front and slightly above
+    // This ensures models appear upright
+    originalCamera.position.set(15, 12, 15);
+    originalCamera.lookAt(0, 5, 0);
     
     const voxelCamera = new THREE.PerspectiveCamera(
       75,
@@ -116,8 +124,9 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    voxelCamera.position.set(12, 10, 12);
-    voxelCamera.lookAt(0, 2, 0);
+    // Match the camera position across all viewports
+    voxelCamera.position.set(15, 12, 15);
+    voxelCamera.lookAt(0, 5, 0);
     
     const legoCamera = new THREE.PerspectiveCamera(
       75,
@@ -125,8 +134,9 @@ const ThreeDHome = () => {
       0.1,
       1000
     );
-    legoCamera.position.set(12, 10, 12);
-    legoCamera.lookAt(0, 2, 0);
+    // Match the camera position across all viewports
+    legoCamera.position.set(15, 12, 15);
+    legoCamera.lookAt(0, 5, 0);
     
     // Create renderers for each viewport
     const originalRenderer = new THREE.WebGLRenderer({ antialias: true });
@@ -364,7 +374,8 @@ const ThreeDHome = () => {
     const loadDefaultModel = async () => {
       try {
         // Check if the gengar.stl file exists
-        const defaultModelPath = '/gengar.stl';
+        // Note: Use the correct case for the file extension (STL instead of stl)
+        const defaultModelPath = '/gengar.STL';
         const response = await fetch(defaultModelPath);
         
         if (response.ok) {
@@ -413,7 +424,7 @@ const ThreeDHome = () => {
       setProgress(10);
       setProcessingMessage("Loading default model...");
       
-      const defaultModelPath = '/gengar.stl';
+      const defaultModelPath = '/gengar.STL';
       const response = await fetch(defaultModelPath);
       
       if (!response.ok) {
@@ -580,15 +591,20 @@ const ThreeDHome = () => {
       originalMesh.updateMatrix();
       
       // STEP 2: Apply standard rotation to match trimesh coordinate system
-      // First, rotate -90 degrees around X-axis to match the typical 3D printable orientation
+      // The -90 degrees X-axis rotation is standard for STL files to convert from 
+      // 3D printer orientation to screen orientation
       const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
       originalMesh.geometry.applyMatrix4(rotationMatrix);
-      
-      // Further rotate the model to align with the voxel and LEGO viewports
-      // This corrects the 90-degree discrepancy between the viewports
-      // Setting explicit rotation rather than using rotateY for more precise control
-      originalMesh.rotation.set(0, Math.PI, 0);
       originalMesh.updateMatrix();
+      
+      // Set explicit model rotation to ensure it stands upright
+      // This ensures the model is aligned with the Y-axis pointing up
+      originalMesh.rotation.set(0, 0, 0);
+      originalMesh.updateMatrix();
+      
+      // IMPORTANT: We're NOT applying a Y-axis rotation to the model geometry anymore.
+      // Instead, we've applied a CSS 'rotateY(180deg)' transform to the entire viewport.
+      // This creates the correct visual alignment without complex geometry transformations.
       
       // STEP 3: Convert from mm to cm (0.1 scale) just like Python implementation
       // Then apply the user scale factor
@@ -840,11 +856,11 @@ const ThreeDHome = () => {
         for (let x = 0; x < voxels[y][z].length; x++) {
           if (voxels[y][z][x] === 1) {
             // Position the voxel - center the grid by subtracting gridOffset
-            // x and z are centered at origin, y starts at ground level (Y=0)
+            // Ensure Y axis is used for height with (0,0,0) at bottom center of grid
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
-              (y + 0.5) * LEGO_UNIT_SIZE,              // Use fixed LEGO unit size
-              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE   // Use fixed LEGO unit size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE,  // X position
+              (y + 0.5) * LEGO_UNIT_SIZE,               // Y position (height)
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE   // Z position
             );
             
             // Set the matrix for this instance
@@ -867,17 +883,15 @@ const ThreeDHome = () => {
           // Only add support bricks where there's a support voxel AND NOT a model voxel
           // This prevents overlapping bricks
           if (supportVoxels[y][z][x] === 1 && voxels[y][z][x] !== 1) {
-            // Position the brick - center the grid by subtracting gridOffset
-            // x and z are centered at origin, y starts at ground level (Y=0)
-            // Position adjusted for the taller brick height
-            const brickHeight = LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO;
+            // Position the voxel - center the grid by subtracting gridOffset
+            // Ensure Y axis is used for height with (0,0,0) at bottom center of grid
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
-              y * LEGO_UNIT_SIZE + (brickHeight / 2),  // Position y so bottom of brick is at grid level
-              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE  // Use fixed LEGO unit size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE,  // X position
+              (y + 0.5) * LEGO_UNIT_SIZE,               // Y position (height)
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE   // Z position
             );
             
-            // Set the matrix for the brick
+            // Set the matrix for this instance
             matrix.makeTranslation(position.x, position.y, position.z);
             supportVoxelMesh.setMatrixAt(supportInstanceIndex, matrix);
             supportVoxelWireframeMesh.setMatrixAt(supportInstanceIndex, matrix);
@@ -983,13 +997,12 @@ const ThreeDHome = () => {
         for (let x = 0; x < voxels[y][z].length; x++) {
           if (voxels[y][z][x] === 1) {
             // Position the brick - center the grid by subtracting gridOffset
-            // x and z are centered at origin, y starts at ground level (Y=0)
-            // Position adjusted for the taller brick height
+            // Ensure Y axis is used for height with bottom of brick aligned with grid level
             const brickHeight = LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO;
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
-              y * LEGO_UNIT_SIZE + (brickHeight / 2),  // Position y so bottom of brick is at grid level
-              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE  // Use fixed LEGO unit size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE,   // X position
+              y * LEGO_UNIT_SIZE + (brickHeight / 2),    // Y position (height)
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE    // Z position
             );
             
             // Set the matrix for the brick
@@ -1001,9 +1014,9 @@ const ThreeDHome = () => {
             
             // Then translate to the correct position
             studMatrix.setPosition(
-              position.x,                         // Same X as brick
+              position.x,                                // Same X as brick
               position.y + (brickHeight / 2) + (LEGO_UNIT_SIZE * 0.08), // Stud sits on top of brick
-              position.z                          // Same Z as brick
+              position.z                                 // Same Z as brick
             );
             
             modelStudMesh.setMatrixAt(modelInstanceIndex, studMatrix);
@@ -1024,13 +1037,12 @@ const ThreeDHome = () => {
           // This prevents overlapping bricks
           if (supportVoxels[y][z][x] === 1 && voxels[y][z][x] !== 1) {
             // Position the brick - center the grid by subtracting gridOffset
-            // x and z are centered at origin, y starts at ground level (Y=0)
-            // Position adjusted for the taller brick height
+            // Ensure Y axis is used for height with bottom of brick aligned with grid level
             const brickHeight = LEGO_UNIT_SIZE * 0.95 * LEGO_HEIGHT_RATIO;
             const position = new THREE.Vector3(
-              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE, // Use fixed LEGO unit size
-              y * LEGO_UNIT_SIZE + (brickHeight / 2),  // Position y so bottom of brick is at grid level
-              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE  // Use fixed LEGO unit size
+              (x - gridOffset + 0.5) * LEGO_UNIT_SIZE,   // X position 
+              y * LEGO_UNIT_SIZE + (brickHeight / 2),    // Y position (height)
+              (z - gridOffset + 0.5) * LEGO_UNIT_SIZE    // Z position
             );
             
             // Set the matrix for the brick
@@ -1042,9 +1054,9 @@ const ThreeDHome = () => {
             
             // Then translate to the correct position
             studMatrix.setPosition(
-              position.x,                         // Same X as brick
+              position.x,                                // Same X as brick
               position.y + (brickHeight / 2) + (LEGO_UNIT_SIZE * 0.08), // Stud sits on top of brick
-              position.z                          // Same Z as brick
+              position.z                                 // Same Z as brick
             );
             
             supportStudMesh.setMatrixAt(supportInstanceIndex, studMatrix);
@@ -1133,7 +1145,7 @@ const ThreeDHome = () => {
       
       // Position the camera at a 45-degree angle for a good view of the buildplate and model
       let cameraDistance = 16;
-      let targetHeight = 4;
+      let targetHeight = 5;
       
       // If we have a model, adjust based on its size
       if (modelGroup) {
@@ -1143,36 +1155,53 @@ const ThreeDHome = () => {
         
         // Use the largest dimension to determine camera distance
         const maxDimension = Math.max(modelSize.x, modelSize.y, modelSize.z);
-        cameraDistance = Math.max(maxDimension * 2, 16);
+        cameraDistance = Math.max(maxDimension * 2.5, 16);
         
-        // Set the target point at about half the model's height
-        targetHeight = Math.max(modelSize.y / 2, 2);
+        // Set the target point at about half the model's height for upright view
+        targetHeight = Math.max(modelSize.y / 2, 5);
       }
       
-      // Position the camera at 45-degree angle using the calculated distance
-      originalCameraRef.current.position.set(cameraDistance, cameraDistance, cameraDistance);
+      // Position the camera to look at the model from slightly above and in front
+      // For the original STL model viewport, we mirror the X position to compensate for the CSS transform
+      originalCameraRef.current.position.set(-cameraDistance, cameraDistance * 0.8, cameraDistance);
       
       // Look at a point at the center of the buildplate, adjusted for model height
       originalControlsRef.current.target.set(0, targetHeight, 0);
       originalControlsRef.current.update();
-    }
-    
-    // Sync the other cameras to match the first viewport EXACTLY
-    if (voxelControlsRef.current && originalCameraRef.current) {
-      voxelCameraRef.current.position.copy(originalCameraRef.current.position);
-      voxelCameraRef.current.rotation.copy(originalCameraRef.current.rotation);
-      voxelControlsRef.current.target.copy(originalControlsRef.current.target);
-      voxelControlsRef.current.update();
-    }
-    
-    if (legoControlsRef.current && originalCameraRef.current) {
-      legoCameraRef.current.position.copy(originalCameraRef.current.position);
-      legoCameraRef.current.rotation.copy(originalCameraRef.current.rotation);
-      legoControlsRef.current.target.copy(originalControlsRef.current.target);
-      legoControlsRef.current.update();
+      
+      // Update camera position state for UI controls
+      setCameraPosition({
+        x: originalCameraRef.current.position.x.toFixed(2),
+        y: originalCameraRef.current.position.y.toFixed(2),
+        z: originalCameraRef.current.position.z.toFixed(2)
+      });
+      
+      setCameraTarget({
+        x: originalControlsRef.current.target.x.toFixed(2),
+        y: originalControlsRef.current.target.y.toFixed(2),
+        z: originalControlsRef.current.target.z.toFixed(2)
+      });
+      
+      // Set standard camera positions for voxel and LEGO viewports (without mirroring)
+      if (voxelCameraRef.current) {
+        voxelCameraRef.current.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
+        voxelControlsRef.current.target.set(0, targetHeight, 0);
+        voxelControlsRef.current.update();
+      }
+      
+      if (legoCameraRef.current) {
+        legoCameraRef.current.position.set(cameraDistance, cameraDistance * 0.8, cameraDistance);
+        legoControlsRef.current.target.set(0, targetHeight, 0);
+        legoControlsRef.current.update();
+      }
     }
     
     // Force a render update for all scenes
+    forceRenderAllScenes();
+  };
+  
+  // Helper to ensure all scenes are rendered with current camera settings
+  const forceRenderAllScenes = () => {
     if (originalRendererRef.current && originalSceneRef.current && originalCameraRef.current) {
       originalRendererRef.current.render(originalSceneRef.current, originalCameraRef.current);
     }
