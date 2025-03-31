@@ -1370,16 +1370,17 @@ const ThreeDHome = () => {
             </div>
             
             {/* Default Model Button */}
-            {defaultModelAvailable && (
-              <div className="mb-4">
-                <button
-                  className="w-full py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700"
-                  onClick={handleDefaultModel}
-                >
-                  Use Default Model (Gengar)
-                </button>
-              </div>
-            )}
+            <div className="mb-4">
+              <button
+                className="w-full py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700"
+                onClick={handleDefaultModel}
+              >
+                Use Default Model (Gengar)
+              </button>
+              <p className="text-xs text-gray-600 mt-1 text-center">
+                Don't have a 3D model? Try our sample Gengar model
+              </p>
+            </div>
             
             {/* Scale Controls */}
             <div className="mb-4">

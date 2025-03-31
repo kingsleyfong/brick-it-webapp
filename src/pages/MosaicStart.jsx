@@ -274,16 +274,17 @@ const MosaicStart = () => {
               />
             </div>
             
-            {usingDefaultImage && (
-              <div className="mt-4">
-                <button
-                  className="w-full py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700 transition"
-                  onClick={handleUseDefaultImage}
-                >
-                  Use Default Image (Pikachu)
-                </button>
-              </div>
-            )}
+            <div className="mt-4">
+              <button
+                className="w-full py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                onClick={handleUseDefaultImage}
+              >
+                Use Default Image (Pikachu)
+              </button>
+              <p className="text-xs text-gray-600 mt-1 text-center">
+                Don't have an image? Use our Pikachu sample image
+              </p>
+            </div>
           </div>
         )}
         
