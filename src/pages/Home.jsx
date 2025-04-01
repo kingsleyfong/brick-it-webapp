@@ -56,10 +56,18 @@ const Home = () => {
         Welcome to <span className="text-red-600">Brick It</span>
       </h1>
       
-      <p className="text-center text-lg max-w-2xl mx-auto mb-8">
-        Transform your images and 3D models into LEGO-compatible instructions.
-        Choose a mode to get started.
-      </p>
+      <div className="text-center text-lg max-w-4xl mx-auto mb-10">
+        <p className="mb-4">
+          Transform your images and 3D models into LEGO-compatible instructions.
+        </p>
+        <p className="mb-6">
+          Built with React, Tailwind CSS, Three.js, and WebAssembly, this app processes everything in your browser without server uploads. 
+          The Mosaic Mode uses AI-generation and color-matching algorithms, while the 3D Model Mode employs voxelization techniques to transform STL files into LEGO bricks.
+        </p>
+        <p className="mb-4">
+          Choose a mode to get started, or visit our <Link to="/learn-more" className="text-blue-600 font-semibold hover:underline">Learn More</Link> page to discover the full story behind this engineering project.
+        </p>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-8">
         {/* Mosaic Mode Card */}
@@ -68,7 +76,7 @@ const Home = () => {
             <img src="/mosaic.png" alt="Mosaic Mode" className="h-full w-full object-cover" />
           </div>
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-2">Mosaic Mode</h2>
+            <h2 className="text-2xl font-bold mb-2 text-gray-800">Mosaic Mode</h2>
             <p className="text-gray-600 mb-4">
               Generate or upload an image, crop it, and convert it to a LEGO mosaic.
             </p>
@@ -88,7 +96,7 @@ const Home = () => {
             <img src="/3dModel.png" alt="3D Model Mode" className="h-full w-full object-cover" />
           </div>
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-2">3D Model Mode</h2>
+            <h2 className="text-2xl font-bold mb-2 text-gray-800">3D Model Mode</h2>
             <p className="text-gray-600 mb-4">
               Upload a 3D model (.stl file) and convert it to LEGO instructions.
             </p>

@@ -54,16 +54,24 @@ const Header = () => {
         
         {/* Creators section and Navigation - Right side */}
         <div className="flex-1 flex flex-col items-end justify-center">
-          {/* Creators section */}
-          <div className="text-xs mb-1 text-right">
-            <div className="font-semibold">Creators:</div>
-            <div>
-              <a href="https://www.linkedin.com/in/kingsley-fong/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Kingsley Fong</a>,&nbsp;
-              <a href="https://www.linkedin.com/in/adambenaissa/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Adam Benaissa</a>
-            </div>
-            <div>
-              <a href="https://www.linkedin.com/in/victor-radu-94a577345/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Victor Constantin Radu</a>,&nbsp;
-              <a href="https://www.linkedin.com/in/j2schuurman/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Joseph Schuurman</a>
+          {/* Learn More and Creators section */}
+          <div className="flex items-center mb-1 text-xs">
+            <Link 
+              to="/learn-more"
+              className="text-blue-300 hover:bg-blue-800 rounded px-2 py-1 mr-4 font-medium"
+            >
+              Learn More
+            </Link>
+            <div className="text-right">
+              <div className="font-semibold">Creators:</div>
+              <div>
+                <a href="https://www.linkedin.com/in/kingsley-fong/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Kingsley Fong</a>,&nbsp;
+                <a href="https://www.linkedin.com/in/adambenaissa/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Adam Benaissa</a>
+              </div>
+              <div>
+                <a href="https://www.linkedin.com/in/victor-radu-94a577345/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Victor Constantin Radu</a>,&nbsp;
+                <a href="https://www.linkedin.com/in/j2schuurman/" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">Joseph Schuurman</a>
+              </div>
             </div>
           </div>
           

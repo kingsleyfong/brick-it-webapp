@@ -9,6 +9,7 @@ import CropImage from './pages/CropImage';
 import MosaicGenerator from './pages/MosaicGenerator';
 import PreviewPanel from './pages/PreviewPanel';
 import ThreeDHome from './pages/ThreeDHome';
+import LearnMore from './pages/LearnMore';
 import { ImageProvider } from './context/ImageContext';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
               <Route path="/mosaic-generator" element={<MosaicGenerator />} />
               <Route path="/preview" element={<PreviewPanel />} />
               <Route path="/3d" element={<ThreeDHome />} />
+              <Route path="/learn-more" element={<LearnMore />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
