@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useImageContext } from '../context/ImageContext';
-import { generateImageFromPrompt, isTransformersAvailable, checkWebAssemblySupport } from '../utils/imageGeneration';
-import { getAvailableModels } from '../utils/modelCache';
+import { generateImageFromAPI } from '../utils/apiService';
+import ApiTester from '../components/ApiTester';
 
 const MosaicStart = () => {
   const navigate = useNavigate();
@@ -12,8 +12,10 @@ const MosaicStart = () => {
   const [uploadMode, setUploadMode] = useState('upload'); // 'upload' or 'ai'
   const fileInputRef = useRef(null);
   const [generationStatus, setGenerationStatus] = useState('');
-  const [modelAvailability, setModelAvailability] = useState(null);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [isModelLoading, setIsModelLoading] = useState(false);
+  // Add quality setting state
+  const [qualitySetting, setQualitySetting] = useState('high'); // 'fast' or 'high'
   
   // Example prompts for inspiration
   const examplePrompts = [
@@ -28,33 +30,8 @@ const MosaicStart = () => {
   // Default example image
   const [usingDefaultImage, setUsingDefaultImage] = useState(false);
   
-  // Check model availability when changing to AI mode
-  useEffect(() => {
-    if (uploadMode === 'ai') {
-      checkModelAvailability();
-    }
-  }, [uploadMode]);
-  
-  // Check if we can generate images using Canvas API (which is always available in modern browsers)
-  const checkModelAvailability = async () => {
-    try {
-      console.log("Checking canvas availability for image generation");
-      // Check if Canvas API is available (it always is in modern browsers)
-      const canvasAvailable = !!document.createElement('canvas').getContext('2d');
-      console.log("Canvas availability:", canvasAvailable);
-      
-      // Set canvas availability as full model availability since we don't need WebAssembly anymore
-      if (canvasAvailable) {
-        setModelAvailability('full');
-      } else {
-        // This should never happen in modern browsers
-        setModelAvailability('fallback');
-      }
-    } catch (error) {
-      console.error('Error checking model availability:', error);
-      setModelAvailability('fallback');
-    }
-  };
+  // Add debug mode state
+  const [showApiTester, setShowApiTester] = useState(false);
   
   // Load default image on first render
   useEffect(() => {
@@ -76,39 +53,6 @@ const MosaicStart = () => {
     };
     
     loadDefaultImage();
-    
-    // Remove any browser warning banners
-    const removeWarningBanners = () => {
-      // Check if we're in Chrome or other modern browser which should be supported
-      const isModernBrowser = /Chrome/.test(navigator.userAgent) || 
-                             /Firefox/.test(navigator.userAgent) || 
-                             /Safari/.test(navigator.userAgent);
-                           
-      if (isModernBrowser) {
-        // Look for fixed position elements that might be warning banners
-        const possibleBanners = document.querySelectorAll('div[style*="fixed"][style*="bottom"]');
-        possibleBanners.forEach(banner => {
-          const computedStyle = window.getComputedStyle(banner);
-          const bgColor = computedStyle.backgroundColor;
-          const textColor = computedStyle.color;
-          
-          // Check if it's likely to be a warning banner (has red background or text)
-          if (bgColor.includes('rgb(255, 204, 203)') || 
-              bgColor.includes('rgb(254, 226, 226)') || 
-              textColor.includes('rgb(185, 28, 28)') || 
-              banner.textContent.includes('browser may not support') ||
-              banner.textContent.includes('Chrome browser')) {
-            banner.style.display = 'none';
-          }
-        });
-      }
-    };
-    
-    // Remove banners on load and after a short delay (in case they're added dynamically)
-    removeWarningBanners();
-    const timeoutId = setTimeout(removeWarningBanners, 1000);
-    
-    return () => clearTimeout(timeoutId);
   }, []);
 
   // Handle file upload
@@ -122,7 +66,7 @@ const MosaicStart = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       setOriginalImage(event.target.result);
-      navigate('/crop');
+      navigate('/image-preview');
     };
     reader.onerror = () => {
       setError('Error reading file');
@@ -132,84 +76,58 @@ const MosaicStart = () => {
 
   // Handle AI image generation
   const handleGenerateImage = async () => {
-    if (!aiPrompt) {
-      setError('Please enter a description for your image.');
+    if (!aiPrompt.trim()) {
+      setError('Please enter a prompt to generate an image.');
       return;
     }
     
-    setOriginalImage(null);
-    setGenerationStatus('Initializing...');
+    // Clear previous error and set status
+    setError('');
     setIsGenerating(true);
-    setError(null);
-    setGenerationProgress(10);
+    setGenerationStatus('Initializing image generation...');
+    setGenerationProgress(15);
     
     try {
-      // Check if the prompt contains astronaut-related terms
-      const hasAstronautTerms = /astronaut|space suit|spaceman|nasa/i.test(aiPrompt);
+      // Generate a random seed for variety
+      const seed = Math.floor(Math.random() * 2147483647);
+      console.log(`Generating image with prompt: "${aiPrompt}", quality: ${qualitySetting}, seed: ${seed}`);
       
-      // Status update callback to display progress
-      const updateStatus = (message) => {
-        setGenerationStatus(message);
-        
-        // Try to extract percentage if it exists
-        const percentMatch = message.match(/(\d+)%/);
-        if (percentMatch && percentMatch[1]) {
-          setGenerationProgress(parseInt(percentMatch[1]));
-        } else if (message === 'Generating your image...') {
-          setGenerationProgress(70); // Arbitrary progress for generation step
-        } else if (message === 'Initializing AI model...') {
-          setGenerationProgress(40);
-        } else if (message === 'Finalizing image...') {
-          setGenerationProgress(90);
-        }
-      };
+      // Update progress stages
+      setGenerationStatus(`Sending request to Stable Diffusion model (${qualitySetting} quality)...`);
+      setGenerationProgress(30);
       
-      // Get available models
-      const models = await getAvailableModels().catch(() => null);
-      const defaultModel = models?.models?.default || null;
+      // Generate the image using our API service with quality setting
+      const result = await generateImageFromAPI(aiPrompt, qualitySetting, seed);
       
-      // Choose the most appropriate model based on the prompt
-      let modelToUse = defaultModel;
-      let inferenceMode = 'normal';
-      
-      // If astronaut in prompt, prioritize the specialized model if available
-      if (hasAstronautTerms && models?.models?.lego) {
-        modelToUse = models.models.lego;
-        console.log('Using specialized LEGO model for astronaut');
+      // Check for loading state (model is still warming up)
+      if (!result.success && result.isLoading) {
+        setIsModelLoading(true);
+        setError('The AI model is currently warming up. Please try again in a few moments.');
+        setIsGenerating(false);
+        setGenerationStatus('');
+        setGenerationProgress(0);
+        return;
       }
       
-      // If the prompt mentions "fast" or "quick", use fast inference mode
-      if (/\bfast\b|\bquick\b/i.test(aiPrompt)) {
-        inferenceMode = 'fast';
+      // Check for generation errors
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate image');
       }
       
-      console.log(`Using model: ${modelToUse}, mode: ${inferenceMode}`);
-      
-      // Generate the image using our improved function
-      const generatedImageUrl = await generateImageFromPrompt(
-        aiPrompt, 
-        modelToUse, 
-        inferenceMode,
-        updateStatus
-      );
-      
-      if (!generatedImageUrl) {
-        throw new Error('Failed to generate image');
-      }
-      
-      setOriginalImage(generatedImageUrl);
+      // Set the generated image
+      setOriginalImage(result.imageUrl);
       setIsGenerating(false);
-      setGenerationStatus('');
+      setGenerationStatus('Image generated successfully!');
       setGenerationProgress(100);
       
-      // Navigate to the crop page after a short delay
+      // Navigate to the image preview page
       setTimeout(() => {
-        navigate('/crop');
+        navigate('/image-preview');
       }, 500);
       
     } catch (error) {
       console.error('Error generating image:', error);
-      setError('Error generating image: ' + (error.message || 'Unknown error'));
+      setError(`Unable to generate image: ${error.message}. Please try again with a different prompt.`);
       setIsGenerating(false);
       setGenerationStatus('');
       setGenerationProgress(0);
@@ -221,7 +139,7 @@ const MosaicStart = () => {
     // Load the pikachu.png from the public folder
     const defaultImagePath = '/pikachu.png';
     setOriginalImage(defaultImagePath);
-    navigate('/crop');
+    navigate('/image-preview');
   };
   
   // Handle example prompt selection
@@ -234,6 +152,23 @@ const MosaicStart = () => {
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         LEGO Mosaic Creator
       </h1>
+      
+      {/* Debug button - API Tester Toggle */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={() => setShowApiTester(!showApiTester)}
+          className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+        >
+          {showApiTester ? 'Hide API Tester' : 'API Debug'}
+        </button>
+      </div>
+      
+      {/* API Tester Component */}
+      {showApiTester && (
+        <div className="mb-6">
+          <ApiTester />
+        </div>
+      )}
       
       <div className="max-w-lg mx-auto">
         {/* Mode Selection Tabs */}
@@ -291,17 +226,10 @@ const MosaicStart = () => {
         {/* AI Generation UI */}
         {uploadMode === 'ai' && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            {modelAvailability === 'full' && (
-              <div className="mb-4 p-2 bg-green-100 text-green-700 rounded-lg">
-                <p className="text-sm font-medium">✅ LEGO image generation available</p>
-                <p className="text-xs">Your browser will generate high-quality LEGO images based on your prompts.</p>
-              </div>
-            )}
-            
-            {modelAvailability === 'fallback' && (
+            {isModelLoading && (
               <div className="mb-4 p-2 bg-yellow-100 text-yellow-700 rounded-lg">
-                <p className="text-sm font-medium">ℹ️ Using basic image generator</p>
-                <p className="text-xs">A simplified image generator will be used due to browser compatibility limitations.</p>
+                <p className="text-sm font-medium">⚠️ AI Model is Warming Up</p>
+                <p className="text-xs">The AI model is initializing. Your request will be processed shortly. Please try again in a few moments.</p>
               </div>
             )}
             
@@ -315,6 +243,37 @@ const MosaicStart = () => {
               onChange={(e) => setAiPrompt(e.target.value)}
               disabled={isGenerating}
             />
+            
+            {/* Quality setting options */}
+            <div className="mb-4">
+              <p className="text-sm text-gray-800 mb-2">Quality Setting:</p>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    className="form-radio h-4 w-4 text-blue-600"
+                    name="quality"
+                    value="fast"
+                    checked={qualitySetting === 'fast'}
+                    onChange={() => setQualitySetting('fast')}
+                    disabled={isGenerating}
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Fast (lower quality)</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    className="form-radio h-4 w-4 text-blue-600"
+                    name="quality"
+                    value="high"
+                    checked={qualitySetting === 'high'}
+                    onChange={() => setQualitySetting('high')}
+                    disabled={isGenerating}
+                  />
+                  <span className="ml-2 text-sm text-gray-700">High quality (slower)</span>
+                </label>
+              </div>
+            </div>
             
             {/* Example prompts */}
             <div className="mb-4">
@@ -346,7 +305,7 @@ const MosaicStart = () => {
             </button>
             
             {/* Generation status */}
-            {isGenerating && generationStatus && (
+            {isGenerating && (
               <div className="mt-3 text-center">
                 <div className="animate-pulse">
                   <p className="text-sm text-blue-600">{generationStatus}</p>
@@ -361,15 +320,30 @@ const MosaicStart = () => {
             )}
             
             <p className="text-sm text-gray-700 mt-3">
-              Try including specific LEGO elements in your prompt, like "astronaut", "pirate", "ninja", or "castle".
+              Try to be specific in your prompt with details like colors, style, and objects. For example: "a blue lego castle with a red dragon" will give better results than just "castle".
             </p>
           </div>
         )}
         
         {/* Error Message */}
         {error && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
-            {error}
+          <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-lg border border-red-300 shadow-sm">
+            <div className="flex items-center mb-2">
+              <svg className="w-5 h-5 mr-2 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">Error</span>
+            </div>
+            <p>{error}</p>
+            <div className="mt-2 text-sm">
+              <p>Suggestions:</p>
+              <ul className="list-disc list-inside mt-1">
+                <li>Try a simpler prompt</li>
+                <li>Be more specific (color, shape, style)</li>
+                <li>Wait a few moments if the model is loading</li>
+                <li>Or upload an image instead</li>
+              </ul>
+            </div>
           </div>
         )}
       </div>

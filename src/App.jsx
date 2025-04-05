@@ -10,6 +10,7 @@ import MosaicGenerator from './pages/MosaicGenerator';
 import PreviewPanel from './pages/PreviewPanel';
 import ThreeDHome from './pages/ThreeDHome';
 import LearnMore from './pages/LearnMore';
+import ImagePreview from './pages/ImagePreview';
 import { ImageProvider } from './context/ImageContext';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/mosaic" element={<MosaicStart />} />
+              <Route path="/image-preview" element={<ImagePreview />} />
               <Route path="/crop" element={<CropImage />} />
               <Route path="/mosaic-generator" element={<MosaicGenerator />} />
               <Route path="/preview" element={<PreviewPanel />} />

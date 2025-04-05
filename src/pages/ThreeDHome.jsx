@@ -442,22 +442,45 @@ const ThreeDHome = () => {
       setProgress(10);
       setProcessingMessage("Loading default model...");
       
+      // Update the path and add error logging
       const defaultModelPath = '/gengar.STL';
-      const response = await fetch(defaultModelPath);
+      console.log(`Attempting to load default model from: ${defaultModelPath}`);
+      
+      // Use a more robust fetch with credentials and improved error handling
+      const response = await fetch(defaultModelPath, {
+        method: 'GET',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': '*/*',
+        },
+      });
       
       if (!response.ok) {
+        console.error(`Failed to load default model: Status ${response.status} - ${response.statusText}`);
         throw new Error(`Failed to load default model: ${response.statusText}`);
       }
       
       setProgress(30);
       setProcessingMessage("Processing STL data...");
       
+      // Get the STL file as an ArrayBuffer
       const arrayBuffer = await response.arrayBuffer();
+      
+      // Verify we got data
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        console.error("Received empty data for default model");
+        throw new Error("Received empty data for default model");
+      }
+      
+      console.log(`Successfully loaded default model: ${arrayBuffer.byteLength} bytes`);
+      
+      // Pass the data to the same functions used by file upload
       setModelFile(arrayBuffer);
       processSTLFile(arrayBuffer);
     } catch (error) {
       console.error('Error loading default model:', error);
-      setError(`Error loading default model: ${error.message}`);
+      setError(`Error loading default model: ${error.message}. Try uploading the file manually.`);
       setIsProcessing(false);
     }
   };
