@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/check-security.js",
+    "build:prepare": "node scripts/build-helper.js",
+    "prebuild": "npm run build:prepare && node scripts/check-security.js",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "deploy.cmd",

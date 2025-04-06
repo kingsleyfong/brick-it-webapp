@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getProxyStatus } from '../api/corsProxy';
 import { generateImageDirect } from '../api/huggingFaceDirect';
-import { getHuggingFaceApiToken, hasApiToken } from '../utils/env';
+import { getHuggingFaceApiToken, hasApiToken, getHuggingFaceApiUrl } from '../utils/env';
 
 /**
  * API Debugger component - provides detailed API debugging information
@@ -49,13 +49,20 @@ const ApiDebugger = () => {
     try {
       // Get API token from environment
       const token = getHuggingFaceApiToken();
+      const apiUrl = getHuggingFaceApiUrl();
       
       if (!token) {
-        setApiStatus('error');
+        setApiStatus({
+          status: 'No API Token',
+          isValid: false,
+          response: 'No API token is set in environment variables. Please set VITE_HUGGINGFACE_API_TOKEN in your .env.local file or Netlify environment variables.',
+          timestamp: new Date().toISOString()
+        });
+        setIsChecking(false);
         return;
       }
       
-      const response = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1', {
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -73,7 +80,12 @@ const ApiDebugger = () => {
       });
     } catch (error) {
       console.error('Error checking API token:', error);
-      setApiStatus('error');
+      setApiStatus({
+        status: 'Error',
+        isValid: false,
+        response: `Error checking API token: ${error.message}`,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setIsChecking(false);
     }
@@ -106,8 +118,10 @@ const ApiDebugger = () => {
     setIsChecking(true);
     
     try {
+      const apiUrl = getHuggingFaceApiUrl();
+      
       // Try using fetch directly to test CORS
-      const response = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1', {
+      const response = await fetch(apiUrl, {
         method: 'GET'
       });
       
@@ -131,13 +145,15 @@ const ApiDebugger = () => {
         'https://corsproxy.server.tld/'
       ];
       
+      const apiUrl = getHuggingFaceApiUrl();
+      
       for (const proxy of proxies) {
         try {
           let proxyUrl;
           if (proxy === 'https://api.allorigins.win/raw?url=' || proxy === 'https://corsproxy.io/?') {
-            proxyUrl = `${proxy}${encodeURIComponent('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1')}`;
+            proxyUrl = `${proxy}${encodeURIComponent(apiUrl)}`;
           } else {
-            proxyUrl = `${proxy}https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1`;
+            proxyUrl = `${proxy}${apiUrl}`;
           }
           
           await fetch(proxyUrl);

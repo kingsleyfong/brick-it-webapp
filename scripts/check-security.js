@@ -60,24 +60,28 @@ for (const filePath of CRITICAL_FILES) {
       foundIssues = true;
     }
   }
+}
+
+// Safety check for environment variables in .env if it exists
+const envPath = path.join(rootDir, '.env');
+if (fs.existsSync(envPath)) {
+  console.log('✅ Checking environment variables in .env file...');
+  const envContent = fs.readFileSync(envPath, 'utf8');
   
-  // Check for environment variables
-  const envFileContent = fs.readFileSync(path.join(rootDir, '.env'), 'utf8');
   for (const envVar of ENV_VARS_TO_CHECK) {
     // Extract the value from .env file
-    const envMatch = envFileContent.match(new RegExp(`${envVar}=(.+)`));
+    const envMatch = envContent.match(new RegExp(`${envVar}=(.+)`));
     
     if (envMatch && envMatch[1] !== 'your_huggingface_api_token_here') {
       console.error(`❌ Real API token found in .env file for ${envVar}`);
       foundIssues = true;
     }
   }
+} else {
+  console.log('ℹ️ No .env file found in repository (this is fine for deployment)');
 }
 
-// Safety check for environment variables
-console.log('✅ Checking environment variables in .env file...');
-const envContent = fs.readFileSync(path.join(rootDir, '.env'), 'utf8');
-
+// Check process.env tokens
 for (const envVar of ENV_VARS_TO_CHECK) {
   if (process.env[envVar] && process.env[envVar].length > 20) {
     console.warn(`⚠️ Warning: ${envVar} is set in process.env but will not be used for build`);

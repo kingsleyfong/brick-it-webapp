@@ -1,0 +1,80 @@
+{
+  "models": {
+    "default": "Xenova/sd-turbo-quantized",
+    "alternatives": [
+      {
+        "id": "Xenova/tiny-stable-diffusion",
+        "name": "Tiny Stable Diffusion",
+        "description": "Smallest model, fastest generation, lower quality",
+        "pipeline": "stable-diffusion"
+      },
+      {
+        "id": "Xenova/sd-turbo-quantized",
+        "name": "Stable Diffusion Turbo (Quantized)",
+        "description": "Medium model, balanced speed and quality",
+        "pipeline": "stable-diffusion"
+      },
+      {
+        "id": "Xenova/clip-vit-base-patch32",
+        "name": "CLIP Vision Transformer",
+        "description": "Text and image understanding (fallback model)",
+        "pipeline": "feature-extraction"
+      },
+      {
+        "id": "Xenova/sdxl-turbo-small",
+        "name": "SDXL Turbo (Small)",
+        "description": "High quality general purpose model",
+        "pipeline": "stable-diffusion"
+      },
+      {
+        "id": "Xenova/minisd-lego-diffusers",
+        "name": "LEGO Mini Diffusion",
+        "description": "Specialized for LEGO content generation",
+        "pipeline": "stable-diffusion"
+      },
+      {
+        "id": "prompthero/openjourney-v4",
+        "name": "OpenJourney v4",
+        "description": "Great for realistic LEGO style renders",
+        "pipeline": "stable-diffusion"
+      }
+    ],
+    "legoPromptTemplates": {
+      "minifigure": "8k professional photo of a LEGO minifigure {prompt}, studio lighting, highly detailed LEGO bricks, toy photography",
+      "astronaut": "8k professional photo of a LEGO minifigure astronaut with space helmet, {prompt}, LEGO space suit, highly detailed LEGO bricks",
+      "scene": "8k professional photography of a LEGO {prompt} scene, highly detailed LEGO bricks, toy photography, studio lighting",
+      "object": "A LEGO model of {prompt}, clear product photography, made of plastic LEGO bricks, highly detailed, studio lighting"
+    }
+  },
+  "inferenceModes": [
+    {
+      "name": "fast",
+      "steps": 10,
+      "guidanceScale": 5.5,
+      "description": "Faster generation, lower quality"
+    },
+    {
+      "name": "normal",
+      "steps": 25,
+      "guidanceScale": 7.5,
+      "description": "Balanced generation time and quality"
+    },
+    {
+      "name": "detailed",
+      "steps": 50,
+      "guidanceScale": 8.5,
+      "description": "Slower generation, higher quality"
+    }
+  ],
+  "webGlSupport": {
+    "description": "Web GPU acceleration settings",
+    "enabled": true,
+    "requiredForModels": ["Xenova/sdxl-turbo-small"],
+    "fallbackMode": "cpu"
+  },
+  "compatibility": {
+    "minTransformersVersion": "2.9.0",
+    "recommendedTransformersVersion": "2.13.0",
+    "supportedBrowsers": ["chrome", "edge", "firefox", "safari"]
+  }
+} 
