@@ -7,7 +7,7 @@
 
 // Dictionary of environment variables with fallbacks
 const ENV = {
-  // API Keys (empty by default for security)
+  // API Keys - IMPORTANT: Use empty default values for security
   HUGGINGFACE_API_TOKEN: import.meta.env.VITE_HUGGINGFACE_API_TOKEN || '',
   
   // API URLs
@@ -51,6 +51,8 @@ export function getEnv(key, defaultValue = '') {
  * @returns {string} The API token or empty string
  */
 export function getHuggingFaceApiToken() {
+  // IMPORTANT: Never use a default value with the actual token
+  // This prevents the token from being bundled into the JS
   return ENV.HUGGINGFACE_API_TOKEN || '';
 }
 
