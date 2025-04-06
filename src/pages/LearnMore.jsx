@@ -26,85 +26,113 @@ const LearnMore = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             {/* Kingsley Fong */}
             <div className="flex flex-col items-center">
-              <div className="w-full aspect-square mb-4 overflow-hidden rounded-lg shadow-md">
-                <img 
-                  src="/kingsley.png" 
-                  alt="Kingsley Fong" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
               <a 
                 href="https://www.linkedin.com/in/kingsley-fong/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-blue-600 font-medium hover:underline"
+                className="w-full transition-transform hover:scale-105"
               >
-                Kingsley Fong
+                <div className="aspect-square mb-4 overflow-hidden rounded-lg shadow-md hover:shadow-lg">
+                  <img 
+                    src="/kingsley.png" 
+                    alt="Kingsley Fong" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-blue-600 font-medium hover:underline text-center block">
+                  Kingsley Fong
+                </span>
               </a>
             </div>
             
             {/* Joseph Schuurman */}
             <div className="flex flex-col items-center">
-              <div className="w-full aspect-square mb-4 overflow-hidden rounded-lg shadow-md">
-                <img 
-                  src="/joseph.png" 
-                  alt="Joseph Schuurman" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
               <a 
                 href="https://www.linkedin.com/in/j2schuurman/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-blue-600 font-medium hover:underline"
+                className="w-full transition-transform hover:scale-105"
               >
-                Joseph Schuurman
+                <div className="aspect-square mb-4 overflow-hidden rounded-lg shadow-md hover:shadow-lg">
+                  <img 
+                    src="/joseph.png" 
+                    alt="Joseph Schuurman" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-blue-600 font-medium hover:underline text-center block">
+                  Joseph Schuurman
+                </span>
               </a>
             </div>
             
             {/* Victor Constantin Radu */}
             <div className="flex flex-col items-center">
-              <div className="w-full aspect-square mb-4 overflow-hidden rounded-lg shadow-md">
-                <img 
-                  src="/victor.png" 
-                  alt="Victor Constantin Radu" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
               <a 
                 href="https://www.linkedin.com/in/victor-radu-94a577345/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-blue-600 font-medium hover:underline"
+                className="w-full transition-transform hover:scale-105"
               >
-                Victor Constantin Radu
+                <div className="aspect-square mb-4 overflow-hidden rounded-lg shadow-md hover:shadow-lg">
+                  <img 
+                    src="/victor.png" 
+                    alt="Victor Constantin Radu" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-blue-600 font-medium hover:underline text-center block">
+                  Victor Constantin Radu
+                </span>
               </a>
             </div>
             
             {/* Adam Benaissa */}
             <div className="flex flex-col items-center">
-              <div className="w-full aspect-square mb-4 overflow-hidden rounded-lg shadow-md">
-                <img 
-                  src="/adam.png" 
-                  alt="Adam Benaissa" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
               <a 
                 href="https://www.linkedin.com/in/adambenaissa/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-blue-600 font-medium hover:underline"
+                className="w-full transition-transform hover:scale-105"
               >
-                Adam Benaissa
+                <div className="aspect-square mb-4 overflow-hidden rounded-lg shadow-md hover:shadow-lg">
+                  <img 
+                    src="/adam.png" 
+                    alt="Adam Benaissa" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-blue-600 font-medium hover:underline text-center block">
+                  Adam Benaissa
+                </span>
               </a>
             </div>
+          </div>
+          
+          {/* Collage Button */}
+          <div className="text-center mt-8">
+            <a 
+              href="https://kingsleyfongportfolio.my.canva.site/brickit" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="inline-flex items-center justify-center px-8 py-4 bg-red-600 text-white text-xl font-bold rounded-lg shadow-lg hover:bg-red-700 transition-all hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <span className="mr-2">🧩</span>
+              Check out our collage!
+              <span className="ml-2">🧩</span>
+            </a>
+            <p className="text-sm text-gray-600 mt-2">See more images and details about our project</p>
           </div>
         </div>
         
         {/* Project Description */}
         <div className="bg-white bg-opacity-90 rounded-lg shadow-lg p-8 mb-12">
           <div className="prose prose-lg max-w-none text-gray-800">
+            <h2 className="text-2xl font-bold mb-4">Project Overview</h2>
+            <p className="mb-4">
+              Brick It is a cutting-edge web application designed to transform digital content into LEGO-compatible building instructions. Our platform supports two primary modes: a Mosaic Mode for converting 2D images into LEGO pixel art, and a 3D Model Mode for transforming STL files into buildable LEGO structures.
+            </p>
+            
             <p className="mb-4">
               This web application is the result of a term design project for ME 101: Introduction to Mechanical Engineering Practice 2 at the University of Waterloo. Developed by Group 17 — Kingsley Fong, Adam Benaissa, Victor Constantin Radu, and Joseph Schuurman — our project explores how automation can transform LEGO building into a creative and accessible digital experience.
             </p>
@@ -139,14 +167,14 @@ const LearnMore = () => {
               <li><strong>Routing:</strong> React Router for seamless SPA navigation</li>
               <li><strong>3D Visualization:</strong> Three.js for interactive 3D model rendering</li>
               <li><strong>Image Processing:</strong> Canvas API for image manipulation and LEGO color matching</li>
-              <li><strong>AI Image Generation:</strong> ONNX Runtime Web for client-side AI processing</li>
+              <li><strong>AI Image Generation:</strong> Hugging Face API with multiple connection methods</li>
               <li><strong>3D Processing:</strong> WebAssembly/Pyodide for complex voxelization algorithms</li>
-              <li><strong>Deployment:</strong> Netlify for static hosting and continuous integration</li>
+              <li><strong>Deployment:</strong> Netlify for static hosting and serverless functions</li>
             </ul>
             
             <h3 className="text-xl font-semibold mb-3">Mosaic Mode Technical Details</h3>
             <p className="mb-4">
-              The Mosaic Mode begins with either an AI-generated image or a user upload. The AI generation uses a lightweight ONNX model running entirely in the browser, creating LEGO-inspired images based on text prompts. Once an image is selected, it's processed through our pipeline:
+              The Mosaic Mode begins with either an AI-generated image or a user upload. The AI generation uses Hugging Face's Stable Diffusion API, creating images based on text prompts. Once an image is selected, it's processed through our pipeline:
             </p>
             <ol className="list-decimal pl-6 mb-6">
               <li>The image is cropped to the user's specifications using the React Easy Crop library</li>
@@ -172,6 +200,18 @@ const LearnMore = () => {
             <h3 className="text-xl font-semibold mb-3">Robot Integration</h3>
             <p className="mb-6">
               The web app's output formats are specifically designed to be compatible with our EV3 LEGO robot's programming. The robot reads the .txt files and places each brick according to the specified coordinates and color indices, bringing the digital designs into physical reality.
+            </p>
+            
+            <h3 className="text-xl font-semibold mb-3">API Connectivity Enhancements</h3>
+            <p className="mb-6">
+              Our latest update significantly improves the image generation capabilities through:
+              <ul className="list-disc pl-6 mb-6">
+                <li>Multiple connection methods to the Hugging Face API</li>
+                <li>Intelligent CORS proxy system with automatic fallbacks</li>
+                <li>Retry mechanisms for improved reliability</li>
+                <li>Client-side fallback generation when API is unavailable</li>
+                <li>Detailed debugging tools for connectivity issues</li>
+              </ul>
             </p>
           </div>
         </div>
