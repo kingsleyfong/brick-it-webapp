@@ -3,13 +3,10 @@
 
 // Import fetchWithProxy from corsProxy
 import { fetchWithProxy } from './corsProxy.js';
+import { getHuggingFaceApiToken, getHuggingFaceApiUrl } from '../utils/env.js';
 
-// Hugging Face API configuration
-const HF_API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1';
-
-// Hardcoded API token for development only
-// IMPORTANT: NEVER commit this to a public repository!
-const API_TOKEN = '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'; 
+// Get API configuration from environment variables
+const HF_API_URL = getHuggingFaceApiUrl();
 
 // Inference steps configuration
 const INFERENCE_STEPS = {
@@ -104,6 +101,16 @@ export async function generateImage(prompt, quality = 'high', seed = null) {
     try {
       if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
         throw new Error('A text prompt is required');
+      }
+
+      // Get API token from environment
+      const API_TOKEN = getHuggingFaceApiToken();
+      
+      if (!API_TOKEN) {
+        return {
+          success: false,
+          error: 'API token not configured. Please set VITE_HUGGINGFACE_API_TOKEN in your environment.',
+        };
       }
 
       // Use the original prompt without LEGO-specific modifications

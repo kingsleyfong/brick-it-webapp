@@ -4,11 +4,7 @@
  * This can be run in the browser console to test if the API key works
  */
 
-// Your Hugging Face API token
-const API_TOKEN = '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';
-
-// API URL
-const API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1';
+import { getHuggingFaceApiToken, getHuggingFaceApiUrl } from '../utils/env';
 
 /**
  * Test the Hugging Face API connection
@@ -18,6 +14,15 @@ export async function testHuggingFaceAPI() {
   console.log('Testing Hugging Face API connection...');
   
   try {
+    // Get API configuration from environment variables
+    const API_URL = getHuggingFaceApiUrl();
+    const API_TOKEN = getHuggingFaceApiToken();
+    
+    if (!API_TOKEN) {
+      console.error('❌ ERROR: API token not configured');
+      return false;
+    }
+    
     // Simple test query
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -59,7 +64,16 @@ export async function checkModelsEndpoint() {
   console.log('Checking models info endpoint...');
   
   try {
-    const response = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1', {
+    // Get API configuration from environment variables
+    const API_URL = getHuggingFaceApiUrl();
+    const API_TOKEN = getHuggingFaceApiToken();
+    
+    if (!API_TOKEN) {
+      console.error('❌ ERROR: API token not configured');
+      return false;
+    }
+    
+    const response = await fetch(API_URL, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${API_TOKEN}`

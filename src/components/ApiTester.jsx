@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { generateImage } from '../api/directImageGen';
 import { fetchWithProxy } from '../api/corsProxy';
+import { getHuggingFaceApiToken, getHuggingFaceApiUrl } from '../utils/env';
 
 /**
  * ApiTester component - provides a UI for testing the Hugging Face API
@@ -113,9 +114,14 @@ const ApiTester = () => {
       if (testMethod === 'proxy' || testMethod === 'both') {
         setTestResults(prevResults => prevResults + '\nTesting with CORS proxy...');
         try {
-          // Test using our CORS proxy directly
-          const API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1';
-          const API_TOKEN = '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';
+          // Get API configuration from environment variables
+          const API_URL = getHuggingFaceApiUrl();
+          const API_TOKEN = getHuggingFaceApiToken();
+          
+          if (!API_TOKEN) {
+            setTestResults(prevResults => prevResults + '\n❌ API token not configured. Please set VITE_HUGGINGFACE_API_TOKEN in your environment.');
+            throw new Error('API token not configured');
+          }
           
           // If a specific proxy is selected
           let specificProxyUrl = null;

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getProxyStatus } from '../api/corsProxy';
 import { generateImageDirect } from '../api/huggingFaceDirect';
+import { getHuggingFaceApiToken, hasApiToken } from '../utils/env';
 
 /**
  * API Debugger component - provides detailed API debugging information
  * and tools to diagnose issues with the Hugging Face API
  */
 const ApiDebugger = () => {
-  const [apiStatus, setApiStatus] = useState({});
+  const [apiStatus, setApiStatus] = useState('unknown');
   const [apiToken, setApiToken] = useState('');
   const [corsStatus, setCorsStatus] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -17,17 +18,9 @@ const ApiDebugger = () => {
   const [directTestResult, setDirectTestResult] = useState(null);
   
   useEffect(() => {
-    // Extract API token from the directImageGen.js file
-    const extractToken = async () => {
-      try {
-        // We'll just refer to the token we know is in the code
-        setApiToken("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");
-      } catch (error) {
-        console.error('Error extracting API token:', error);
-      }
-    };
-    
-    extractToken();
+    // Get API token from environment variable
+    const token = getHuggingFaceApiToken();
+    setApiToken(token ? (token.substring(0, 5) + '...') : 'Not set');
     
     // Update proxy stats periodically
     const updateProxyStats = () => {
@@ -52,12 +45,20 @@ const ApiDebugger = () => {
   // Test the API token with a simple request
   const checkApiToken = async () => {
     setIsChecking(true);
-    
+    setApiStatus('checking');
     try {
+      // Get API token from environment
+      const token = getHuggingFaceApiToken();
+      
+      if (!token) {
+        setApiStatus('error');
+        return;
+      }
+      
       const response = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiToken}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -71,12 +72,8 @@ const ApiDebugger = () => {
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      setApiStatus({
-        status: 'Error',
-        isValid: false,
-        response: error.message,
-        timestamp: new Date().toISOString()
-      });
+      console.error('Error checking API token:', error);
+      setApiStatus('error');
     } finally {
       setIsChecking(false);
     }
@@ -225,16 +222,16 @@ const ApiDebugger = () => {
       <div className="mb-4">
         <div className="flex items-center mb-2">
           <div className="w-3 h-3 rounded-full mr-2" 
-               style={{ backgroundColor: apiStatus.isValid ? '#10B981' : '#EF4444' }}></div>
+               style={{ backgroundColor: apiStatus === 'error' ? '#EF4444' : apiStatus === 'checking' ? '#F59E0B' : '#10B981' }}></div>
           <span className="text-sm font-medium">
-            API Token: {apiToken ? `${apiToken.slice(0, 8)}...` : 'Not found'}
+            API Token: {apiToken || 'Not set'} {hasApiToken() ? '(Valid format)' : '(Invalid)'}
           </span>
         </div>
         
         <div className="flex flex-wrap gap-2 mb-2">
           <button
             onClick={checkApiToken}
-            disabled={isChecking || !apiToken}
+            disabled={isChecking}
             className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
           >
             Check API Token
@@ -283,7 +280,25 @@ const ApiDebugger = () => {
       )}
       
       {/* API Status Results */}
-      {apiStatus.timestamp && (
+      {apiStatus === 'error' && (
+        <div className="mb-3">
+          <h4 className="text-sm font-medium mb-1">API Token Status:</h4>
+          <div className="bg-gray-100 p-2 rounded-md text-xs font-mono">
+            <p>Status: {apiStatus}</p>
+          </div>
+        </div>
+      )}
+      
+      {apiStatus === 'checking' && (
+        <div className="mb-3">
+          <h4 className="text-sm font-medium mb-1">API Token Status:</h4>
+          <div className="bg-gray-100 p-2 rounded-md text-xs font-mono">
+            <p>Checking...</p>
+          </div>
+        </div>
+      )}
+      
+      {apiStatus !== 'error' && apiStatus !== 'checking' && apiStatus.timestamp && (
         <div className="mb-3">
           <h4 className="text-sm font-medium mb-1">API Token Status:</h4>
           <div className="bg-gray-100 p-2 rounded-md text-xs font-mono">
