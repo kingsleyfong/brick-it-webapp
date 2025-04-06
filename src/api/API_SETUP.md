@@ -8,7 +8,7 @@ The application offers multiple methods to connect to the Hugging Face API for i
 
 1. **Direct Browser-to-API Connection** (Default)
    - Makes calls directly from the browser to the Hugging Face API
-   - Requires an API token in the code
+   - Uses environment variables for API token
    - May encounter CORS issues depending on browser settings
 
 2. **CORS Proxy** (Fallback)
@@ -23,53 +23,60 @@ The application offers multiple methods to connect to the Hugging Face API for i
 
 ## Setting Up Your API Token
 
-### Option 1: Direct Browser Implementation
+### Option 1: Local Development with Environment Variables
 
 1. Get a Hugging Face API token from [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 
-2. Open the file `app/src/api/directImageGen.js` and replace the placeholder API token:
-
-   ```javascript
-   // Replace this with your actual token
-   const API_TOKEN = 'your_api_token_here';
-   ```
-
-3. Open the file `app/src/api/testHuggingFace.js` and also replace the API token there:
-
-   ```javascript
-   // Your Hugging Face API token
-   const API_TOKEN = 'your_api_token_here';
-   ```
-
-### Option 2: Netlify Functions (Recommended for Production)
-
-1. Create a `.env` file in the root directory:
+2. Create a `.env.local` file in the root directory (this file will not be committed to the repository):
 
    ```
-   HUGGINGFACE_API_TOKEN=your_api_token_here
+   # API Keys
+   VITE_HUGGINGFACE_API_TOKEN=your_actual_token_here
+   
+   # For serverless functions
+   HUGGINGFACE_API_TOKEN=your_actual_token_here
    ```
 
-2. For local development with Netlify Functions, create a `functions-dev.env` file:
+3. The application will automatically pick up these environment variables during development.
+
+### Option 2: Netlify Deployment (Recommended for Production)
+
+1. In your Netlify dashboard, go to Site settings > Build & deploy > Environment
+
+2. Add these environment variables:
+   - `VITE_HUGGINGFACE_API_TOKEN` (for browser code)
+   - `HUGGINGFACE_API_TOKEN` (for serverless functions)
+
+3. Set each variable to your actual Hugging Face API token
+
+4. For local development with Netlify Functions, create a `functions-dev.env.local` file (not committed to the repository):
 
    ```
-   HUGGINGFACE_API_TOKEN=your_api_token_here
+   HUGGINGFACE_API_TOKEN=your_actual_token_here
    MODEL_ID=stabilityai/stable-diffusion-2-1
    INFERENCE_STEPS_FAST=20
    INFERENCE_STEPS_HIGH=30
    GUIDANCE_SCALE=7.5
    ```
 
-3. Install the Netlify CLI:
+5. Install the Netlify CLI for local function testing:
 
    ```bash
    npm install -g netlify-cli
    ```
 
-4. Run the application with Netlify Functions:
+6. Run the application with Netlify Functions:
 
    ```bash
    npm run netlify:dev
    ```
+
+## IMPORTANT: Security Notes
+
+1. **NEVER hardcode API tokens in your source code**
+2. **NEVER commit `.env.local` or any files with real API tokens to your repository**
+3. Always use environment variables for sensitive information
+4. The `.env` and `.env.example` files should contain only placeholders, not real tokens
 
 ## API Testing
 
@@ -100,7 +107,8 @@ If your API token is rejected:
 
 1. Verify your token is still valid on the Hugging Face website
 2. Ensure you have access to the Stable Diffusion model
-3. Check for typos when copying the token
+3. Check that your environment variables are set correctly
+4. For Netlify, check that your environment variables are configured in the dashboard
 
 ### Model Loading Errors
 
@@ -114,6 +122,7 @@ If you see "model is loading" errors:
 
 The key files involved in the API implementation are:
 
+- `app/src/utils/env.js` - Environment variable management
 - `app/src/api/directImageGen.js` - Direct API implementation
 - `app/src/api/corsProxy.js` - CORS proxy implementation
 - `app/src/api/testHuggingFace.js` - API testing utilities
@@ -124,11 +133,12 @@ The key files involved in the API implementation are:
 
 To change the model or generation parameters:
 
-1. Open `app/src/api/directImageGen.js` to modify:
-   - The model ID (HF_API_URL)
-   - Inference steps
-   - Guidance scale
+1. Update your environment variables:
+   - `VITE_HF_API_URL` - The model endpoint URL
+   - `VITE_INFERENCE_STEPS_FAST` - Steps for fast generation
+   - `VITE_INFERENCE_STEPS_HIGH` - Steps for high quality generation
+   - `VITE_GUIDANCE_SCALE` - Guidance scale value
 
 2. If using Netlify Functions, also update:
-   - `functions-dev.env` for local development
+   - `functions-dev.env.local` for local development
    - Environment variables in your Netlify dashboard for production 

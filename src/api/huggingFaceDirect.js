@@ -5,9 +5,14 @@
  * using various fetch configurations that might bypass CORS issues.
  */
 
-// Hugging Face API configuration
-const HF_API_URL = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1';
-const API_TOKEN = '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';
+import { getHuggingFaceApiToken, getHuggingFaceApiUrl } from '../utils/env';
+
+// Configuration options for direct API calls
+const CONFIG = {
+  STEPS_FAST: 20,
+  STEPS_HIGH: 30,
+  GUIDANCE_SCALE: 7.5
+};
 
 /**
  * Attempts to convert a blob to base64
@@ -33,8 +38,21 @@ export async function generateImageDirect(prompt, options = {}) {
   const quality = options.quality || 'high';
   const seed = options.seed || Math.floor(Math.random() * 2147483647);
   
+  // Get API configuration from environment
+  const HF_API_URL = getHuggingFaceApiUrl();
+  const API_TOKEN = getHuggingFaceApiToken();
+  
+  if (!API_TOKEN) {
+    console.error('[HF Direct] No API token found in environment variables');
+    return {
+      success: false,
+      error: 'No API token configured. Please set VITE_HUGGINGFACE_API_TOKEN in your environment.',
+      seed
+    };
+  }
+  
   // Determine inference steps
-  const steps = quality === 'fast' ? 20 : 30;
+  const steps = quality === 'fast' ? CONFIG.STEPS_FAST : CONFIG.STEPS_HIGH;
   
   console.log(`[HF Direct] Attempting direct generation for prompt: "${prompt}"`);
   
@@ -43,7 +61,7 @@ export async function generateImageDirect(prompt, options = {}) {
     inputs: prompt,
     parameters: {
       seed: seed,
-      guidance_scale: 7.5,
+      guidance_scale: CONFIG.GUIDANCE_SCALE,
       num_inference_steps: steps
     }
   };
@@ -113,7 +131,7 @@ export async function generateImageDirect(prompt, options = {}) {
       formData.append('inputs', prompt);
       formData.append('parameters', JSON.stringify({
         seed: seed,
-        guidance_scale: 7.5,
+        guidance_scale: CONFIG.GUIDANCE_SCALE,
         num_inference_steps: steps
       }));
       
