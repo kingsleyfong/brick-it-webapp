@@ -1,5 +1,7 @@
 # 🧱 Brick It – LEGO Mosaic & 3D Web App
 
+Check it out live!: https://brickit.netlify.app/
+
 A web application that transforms images and 3D models into LEGO-compatible instructions.
 
 ## Features
